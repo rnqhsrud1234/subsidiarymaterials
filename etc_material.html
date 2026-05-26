@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>기타 부자재 보유현황</title>
+
+<!-- Supabase 클라이언트 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  body { font-family: Arial, sans-serif; background: #f4f6f8; }
+  .container { max-width: 1100px; margin: 20px auto; background: #fff; padding: 20px; }
+  h3 { margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { border: 1px solid #000; padding: 6px 8px; text-align: center; }
+  th { background: #cfdcf5; color: #000; font-weight: normal; }
+  .left { text-align: left; }
+  input[type="number"] { width: 70px; padding: 4px; text-align: center; }
+  .total { background: #e6e6e6; font-weight: bold; }
+  .top-buttons { margin-bottom: 15px; }
+  .top-buttons button { margin-right: 8px; padding: 8px 14px; font-size: 13px; background: #1f3a5a; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+  .top-buttons button:hover { background: #16304a; }
+  .top-buttons button:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-save { background: #28a745 !important; }
+  .btn-save:hover { background: #218838 !important; }
+  .btn-logout { background: #6c757d !important; }
+  .btn-logout:hover { background: #5a6268 !important; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h3>기타 부자재 신청</h3>
+
+  <div class="top-buttons">
+    <button type="button" class="btn-save" id="saveBtn" onclick="saveData()">저장</button>
+    <button type="button" onclick="goPage('user_input.html')">부자재 신청으로</button>
+    <button type="button" class="btn-logout" onclick="logout()">로그아웃</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>설치법인명</th>
+        <th>배수통 잔여수량</th>
+        <th>배수호스 잔여수량</th>
+        <th>드레인피팅 잔여수량</th>
+        <th>단열재 잔여수량</th>
+        <th>CP-AJS 배수호스(단위:롤)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="left" id="corpName"></td>
+        <td><input type="number" id="drainTankRemain" min="0" value="0"></td>
+        <td><input type="number" id="drainHoseRemain" min="0" value="0"></td>
+        <td><input type="number" id="trainRemain" min="0" value="0"></td>
+        <td><input type="number" id="insulationRemain" min="0" value="0"></td>
+        <td><input type="number" id="cpAjsRoll" min="0" value="0"></td>
+      </tr>
+      <tr class="total">
+        <td class="left">합계</td>
+        <td id="sumDrainTankRemain">0</td>
+        <td id="sumDrainHoseRemain">0</td>
+        <td id="sumTrainRemain">0</td>
+        <td id="sumInsulationRemain">0</td>
+        <td id="sumCpAjsRoll">0</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+// Supabase 설정
+const SUPABASE_URL = 'https://yhuvkxuzolhpnzzbpigr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Ka0LELW2NrPf3q3dyO1Usg_EHYTS31K';
+
+var supabaseClient = null;
+
+document.addEventListener('DOMContentLoaded', async function() {
+  // Supabase 초기화
+  if (typeof window.supabase !== 'undefined') {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase 초기화 완료');
+  } else {
+    console.error('❌ Supabase 라이브러리 로드 실패');
+  }
+
+  const role = localStorage.getItem('loginRole');
+  if (role !== 'user') {
+    alert('접근 권한이 없습니다.');
+    location.href = 'login.html';
+    return;
+  }
+
+  const branchName = localStorage.getItem('loginBranch');
+  if (!branchName) {
+    alert('지점 정보를 불러올 수 없습니다.');
+    location.href = 'login.html';
+    return;
+  }
+
+  document.getElementById('corpName').textContent = branchName;
+
+  await loadData();
+  await checkAndApplyDeadlock();
+  document.querySelectorAll('input[type="number"]').forEach(function(inp) {
+    inp.addEventListener('input', calcSum);
+  });
+});
+
+function calcSum() {
+  const drainTankRemain = parseInt(document.getElementById('drainTankRemain').value, 10) || 0;
+  const drainHoseRemain = parseInt(document.getElementById('drainHoseRemain').value, 10) || 0;
+  const trainRemain = parseInt(document.getElementById('trainRemain').value, 10) || 0;
+  const insulationRemain = parseInt(document.getElementById('insulationRemain').value, 10) || 0;
+  const cpAjsRoll = parseInt(document.getElementById('cpAjsRoll').value, 10) || 0;
+
+  document.getElementById('sumDrainTankRemain').textContent = drainTankRemain;
+  document.getElementById('sumDrainHoseRemain').textContent = drainHoseRemain;
+  document.getElementById('sumTrainRemain').textContent = trainRemain;
+  document.getElementById('sumInsulationRemain').textContent = insulationRemain;
+  document.getElementById('sumCpAjsRoll').textContent = cpAjsRoll;
+}
+
+async function loadData() {
+  const userId = localStorage.getItem('userId');
+  const branchId = localStorage.getItem('loginId');
+  
+  if (!userId || !branchId || !supabaseClient) return;
+
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = now.getMonth() + 1;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('etc_applications')
+      .select('*')
+      .eq('branch_id', branchId)
+      .eq('year', year)
+      .eq('month', month)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('불러오기 오류:', error);
+      return;
+    }
+
+    if (!data) {
+      console.log('저장된 데이터 없음');
+      calcSum();
+      return;
+    }
+
+    console.log('✅ 데이터 불러오기 성공');
+
+    document.getElementById('drainTankRemain').value = data.drain_tank_remain || 0;
+    document.getElementById('drainHoseRemain').value = data.drain_hose_remain || 0;
+    document.getElementById('trainRemain').value = data.train_remain || 0;
+    document.getElementById('insulationRemain').value = data.insulation_remain || 0;
+    document.getElementById('cpAjsRoll').value = data.cp_ajs_roll || 0;
+
+    calcSum();
+  } catch (error) {
+    console.error('불러오기 오류:', error);
+  }
+}
+
+async function saveData() {
+  const userId = localStorage.getItem('userId');
+  const branchId = localStorage.getItem('loginId');
+  const branchName = localStorage.getItem('loginBranch');
+  const saveBtn = document.getElementById('saveBtn');
+  
+  if (!userId || !branchId) {
+    alert('로그인 정보가 없습니다.');
+    return;
+  }
+
+  if (!supabaseClient) {
+    alert('Supabase가 초기화되지 않았습니다. 페이지를 새로고침해주세요.');
+    return;
+  }
+
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = now.getMonth() + 1;
+
+  const payload = {
+    user_id: userId,
+    branch_id: branchId,
+    branch_name: branchName || '',
+    year: year,
+    month: month,
+    drain_tank_remain: parseInt(document.getElementById('drainTankRemain').value, 10) || 0,
+    drain_hose_remain: parseInt(document.getElementById('drainHoseRemain').value, 10) || 0,
+    train_remain: parseInt(document.getElementById('trainRemain').value, 10) || 0,
+    insulation_remain: parseInt(document.getElementById('insulationRemain').value, 10) || 0,
+    cp_ajs_roll: parseInt(document.getElementById('cpAjsRoll').value, 10) || 0
+  };
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = '저장 중...';
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('etc_applications')
+      .upsert(payload, { onConflict: 'branch_id,year,month' });
+
+    if (error) throw error;
+
+    console.log('✅ 저장 완료');
+    alert('저장되었습니다.');
+  } catch (error) {
+    console.error('저장 오류:', error);
+    alert('저장 중 오류가 발생했습니다: ' + error.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = '저장';
+  }
+}
+
+function goPage(url) { 
+  location.href = url; 
+}
+
+function logout() {
+  localStorage.clear();
+  location.href = 'login.html';
+}
+
+async function checkAndApplyDeadlock() {
+  if (!supabaseClient) return;
+  try {
+    const { data } = await supabaseClient
+      .from('settings')
+      .select('value')
+      .eq('key', 'is_closed')
+      .single();
+
+    if (data && data.value === 'true') applyLock();
+  } catch (e) {
+    console.warn('마감 상태 확인 실패:', e);
+  }
+}
+
+function applyLock() {
+  document.querySelectorAll('input[type="number"]').forEach(function(inp) {
+    inp.disabled = true;
+    inp.style.backgroundColor = '#e0e0e0';
+    inp.style.cursor = 'not-allowed';
+  });
+
+  const saveBtn = document.getElementById('saveBtn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.style.opacity = '0.5';
+    saveBtn.style.cursor = 'not-allowed';
+    saveBtn.title = '마감되어 저장할 수 없습니다.';
+  }
+
+  const banner = document.createElement('div');
+  banner.id = 'closedBanner';
+  banner.style.cssText = 'background:#dc3545; color:white; text-align:center; padding:10px; font-size:14px; font-weight:bold; margin-bottom:10px; border-radius:4px;';
+  banner.textContent = '🔒 신청이 마감되었습니다. 현재 입력 및 수정이 불가합니다.';
+
+  const container = document.querySelector('.container');
+  const h3 = container.querySelector('h3');
+  container.insertBefore(banner, h3);
+}
+</script>
+</body>
+</html>

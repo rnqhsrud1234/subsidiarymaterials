@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>부자재 신청</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { box-sizing: border-box; }
+body { font-family: 'Malgun Gothic', Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 0; font-size: 13px; }
+.container { max-width: 960px; margin: 0 auto; padding: 16px; }
+
+.top-bar { display: flex; align-items: center; justify-content: space-between; background: #1e4e79; color: #fff; padding: 10px 16px; border-radius: 6px; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+.top-bar h2 { margin: 0; font-size: 15px; }
+.top-bar .sub { font-size: 11px; color: #aed4f5; margin-top: 2px; }
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { padding: 7px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+.btn-save   { background: #28a745; color: #fff; }
+.btn-nav    { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+.btn-logout { background: #6c757d; color: #fff; }
+.btn:hover  { opacity: 0.85; }
+.btn:disabled { background: #999 !important; cursor: not-allowed; opacity: 0.6; }
+
+.closed-banner { background: #dc3545; color: #fff; text-align: center; padding: 9px; font-size: 13px; font-weight: bold; border-radius: 4px; margin-bottom: 12px; display: none; }
+
+.section { background: #fff; border-radius: 6px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
+.section-title { background: #1e4e79; color: #fff; padding: 8px 14px; font-size: 13px; font-weight: bold; }
+.section-body { padding: 14px; }
+
+.info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.info-item label { display: block; font-size: 11px; color: #555; margin-bottom: 4px; font-weight: bold; }
+.info-item input { width: 100%; padding: 7px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; text-align: center; }
+.info-item input:focus { outline: none; border-color: #1e4e79; box-shadow: 0 0 0 2px rgba(30,78,121,.15); }
+.info-item input[readonly] { background: #f5f5f5; color: #777; cursor: not-allowed; }
+.info-note { font-size: 11px; color: #888; margin-top: 10px; line-height: 1.6; }
+
+.wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+th { background: #1e4e79; color: #fff; padding: 7px 8px; text-align: center; border: 1px solid #16396b; }
+th.sub { background: #2e6da4; }
+td { border: 1px solid #ddd; padding: 5px 6px; text-align: center; vertical-align: middle; }
+td.name { text-align: left; padding-left: 10px; min-width: 160px; color: #333; }
+td input[type="number"] { width: 72px; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; text-align: center; font-size: 12px; }
+td input[type="number"]:focus { outline: none; border-color: #1e4e79; background: #fffde7; }
+td.apply input[type="number"] { background: #fffde7; border-color: #f0c040; font-weight: bold; }
+td.apply input[type="number"]:focus { background: #fff9c4; }
+td.note-td { text-align: left; font-size: 11px; color: #999; min-width: 160px; }
+td.calc { color: #1e4e79; font-size: 12px; background: #f0f7ff; }
+td.pack-display { color: #1e4e79; font-size: 12px; font-weight: bold; background: #f0f7ff; min-width: 80px; }
+
+/* 홀수월 전용 행 */
+tr.odd-only td { background: #fff8f0; }
+tr.odd-only td.apply input { background: #fff0d6; border-color: #e67e22; }
+tr.odd-only td.name { color: #c0392b; }
+.odd-badge { display: inline-block; font-size: 10px; background: #e67e22; color: #fff; border-radius: 3px; padding: 1px 5px; margin-left: 5px; vertical-align: middle; }
+tr.odd-locked td { background: #f5f5f5; color: #aaa; }
+tr.odd-locked td input { background: #eee; color: #aaa; cursor: not-allowed; }
+
+.save-status { text-align: right; font-size: 11px; color: #666; margin-top: 6px; min-height: 16px; }
+.save-status.ok  { color: #28a745; }
+.save-status.err { color: #dc3545; }
+.admin-badge { display:inline-block; font-size:10px; background:#e67e22; color:#fff; border-radius:3px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+tr.admin-modified td { background:#fff8f0 !important; }
+tr.admin-modified td.apply input { border-color:#e67e22 !important; background:#fff3e0 !important; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div>
+      <h2>📦 부자재 신청</h2>
+      <div class="sub" id="periodLabel">로딩 중...</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-save" id="saveBtn" onclick="saveAll()">💾 저장</button>
+      <button class="btn btn-nav" onclick="location.href='etc_material.html'">기타 부자재</button>
+      <button class="btn btn-nav" onclick="location.href='service_hood.html'">후드 부자재</button>
+      <button class="btn btn-logout" onclick="logout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="closed-banner" id="closedBanner">🔒 신청이 마감되었습니다. 현재 입력 및 수정이 불가합니다.</div>
+
+  <!-- ① 법인 기본 정보 -->
+  <div class="section">
+    <div class="section-title">① 법인 기본 정보</div>
+    <div class="section-body">
+      <div class="info-grid">
+        <div class="info-item">
+          <label>설치법인명</label>
+          <input type="text" id="corpName" readonly>
+        </div>
+        <div class="info-item">
+          <label>예상 계정수 (건)</label>
+          <input type="number" id="expectedCount" min="0" value="0" readonly>
+        </div>
+        <div class="info-item">
+          <label>인원 T/O (명)</label>
+          <input type="number" id="toCount" readonly>
+        </div>
+      </div>
+      <div class="info-note">
+        ※ <b>예상 계정수</b>·<b>인원 T/O</b>는 관리자가 설정한 값입니다. 수정이 필요하면 관리자에게 문의하세요.<br>
+        ※ 기준수량은 예상 계정수·인원 T/O를 기준으로 자동 계산됩니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 잡자재 신청 -->
+  <div class="section">
+    <div class="section-title">② 잡자재 신청</div>
+    <div class="section-body">
+      <div class="wrap">
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2">품목</th>
+              <th>기준수량<br><small>(EA)</small></th>
+              <th>필요수량<br><small>(EA)</small></th>
+              <th>현 보유재고<br><small>(EA)</small></th>
+              <th class="sub">신청수량<br><small>(EA)</small></th>
+              <th rowspan="2">비고</th>
+            </tr>
+          </thead>
+          <tbody id="miscTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 티슈류 신청 -->
+  <div class="section">
+    <div class="section-title">③ 티슈류 신청</div>
+    <div class="section-body">
+      <div class="wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>품목</th>
+              <th>현 보유재고<br><small>(PACK)</small></th>
+              <th class="sub">신청수량<br><small>(BOX)</small></th>
+              <th>환산<br><small>(PACK)</small></th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody id="tissueTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="save-status" id="saveStatus"></div>
+</div>
+
+<script>
+const SUPABASE_URL      = 'https://yhuvkxuzolhpnzzbpigr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Ka0LELW2NrPf3q3dyO1Usg_EHYTS31K';
+
+let supabaseClient = null;
+let branchId = '';
+let YEAR = '', MONTH = 0;
+let appData = null;
+let locked = false;
+let toCount = 0;
+let expectedCount = 0;
+const isOddMonth = () => MONTH % 2 === 1;
+
+// ── 품목 정의 ──────────────────────────────────────────────────
+// need: 필요수량 계산 함수 (exp=예상계정수, to=인원TO)
+// perPack: PACK 단위 품목의 최소 주문 단위
+const miscItems = [
+  // std: 기준수량(고정값, readonly 표시)
+  // need: 필요수량 자동계산 수식 (null이면 '—')
+  // perPack: 최소 주문단위 (자동 올림)
+  { db:'튜빙선(1P)',                std:3,    need:(exp,to,std)=>Math.round((exp*0.5)*std/100), note:'1롤 : 100M 여유분지급' },
+  { db:'튜빙선(2P)',                std:5,    need:(exp,to,std)=>Math.round((exp*0.5)*std/50),  note:'1롤 : 50M' },
+  { db:'튜빙선(1P, 3/8)',           std:null, need:null,                                         note:'1롤 : 50M (POU전용)' },
+  { db:'튜빙선_ACS (LLD T/B 1/2)', std:null, need:null,                                         note:'1롤 : 50M (ACS툴 전용)' },
+  { db:'테프론',                    std:3,    need:(exp,to,std)=>to*std,                         note:'인당 3EA(월)' },
+  { db:'토끼코크',                  std:1,    need:(exp,to,std)=>to*std,                         note:'인당 1EA(월)' },
+  { db:'피스',                      std:null,    need:(exp,to,std)=>exp<=1000?2000:4000,             perPack:1000, note:'1PACK(1,000EA) 단위 주문' },
+  { db:'철판피스',                  std:null,    need:(exp,to,std)=>exp<=1000?2000:4000,             perPack:1000, note:'1PACK(1,000EA) 단위 주문' },
+  { db:'새들(4N)',                  std:null,    need:(exp,to,std)=>exp<=1000?2000:4000,             perPack:1000, note:'1PACK(1,000EA) 단위 주문' },
+  { db:'새들(6N)',                  std:null,    need:(exp,to,std)=>exp<=1000?2000:4000,             perPack:1000, note:'1PACK(1,000EA) 단위 주문' },
+  { db:'케이블타이(대)',            std:null,    need:(exp,to,std)=>exp<=1000?2000:4000,             perPack:1000, note:'1PACK(1,000EA) 단위 주문' },
+  { db:'케이블타이(소)',            std:null,    need:(exp,to,std)=>exp<=1000?2000:4000,             perPack:1000, note:'1PACK(1,000EA) 단위 주문' },
+  { db:'마운팅베이스',              std:null,    need:(exp,to,std)=>exp<=1000?1000:2000,             perPack:1000, note:'1PACK(1,000EA) 단위 주문' },
+  { db:'단 니플',                   std:null, need:(exp,to,std)=>exp<=1000?20:40,                perPack:20,   note:'1PACK(20EA) 단위 주문' },
+  { db:'연결니플',                  std:null, need:(exp,to,std)=>exp<=1000?20:40,                perPack:20,   note:'1PACK(20EA) 단위 주문' },
+  { db:'전기테이프',                std:3,    need:(exp,to,std)=>to*std,                         note:'인당 3EA(월)' },
+  { db:'배수용큐방',                std:null,    need:(exp,to,std)=>exp<=1000?1000:2000,             perPack:1000, note:'1PACK(1,000EA) 단위 주문' },
+  { db:'천공앙카',                  std:null, need:null,                                         perPack:10,   note:'1PACK(10EA) 단위 주문' },
+  { db:'신형고강도(흰색) 2호',      std:null, need:null,                                         perPack:100,  note:'1PACK(100EA) 단위 주문 / 홀수월만', oddOnly:true },
+  { db:'신형고강도(흰색) 3호',      std:null, need:null,                                         perPack:70,   note:'1PACK(70EA) 단위 주문 / 홀수월만',  oddOnly:true },
+];
+
+const tissueItems = [
+  { db:'건식티슈', packsPerBox:100, need:(exp,to,std)=>Math.round(exp/10*std), note:'1BOX = 100PACK (1PACK: 20EA)' },
+  { db:'습식티슈', packsPerBox:50,  need:(exp,to,std)=>Math.round(exp/10*std), note:'1BOX = 50PACK (1PACK: 50EA)' },
+  { db:'위생장갑', packsPerBox:30,  need:(exp,to,std)=>Math.round(exp/10*std), note:'1BOX = 30PACK (1PACK: 200EA)' },
+];
+
+// ── 초기화 ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  if (typeof window.supabase !== 'undefined') {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else { alert('Supabase 로드 실패. 새로고침해주세요.'); return; }
+
+  const role = localStorage.getItem('loginRole');
+  if (role !== 'user') { alert('접근 권한이 없습니다.'); location.href = 'login.html'; return; }
+
+  branchId = localStorage.getItem('loginId') || '';
+  document.getElementById('corpName').value = localStorage.getItem('loginBranch') || '';
+
+  const now = new Date();
+  YEAR  = now.getFullYear().toString().slice(-2);
+  MONTH = now.getMonth() + 1;
+  document.getElementById('periodLabel').textContent = '20' + YEAR + '년 ' + MONTH + '월 기준'
+    + (isOddMonth() ? '  (홀수월 — 신형고강도 신청 가능)' : '  (짝수월 — 신형고강도 신청 불가)');
+
+  buildTables();
+  await checkLock();
+  await loadUserInfo();
+  await loadData();
+});
+
+// ── 테이블 렌더 ────────────────────────────────────────────────
+function buildTables() {
+  document.getElementById('miscTbody').innerHTML = miscItems.map((it, i) => {
+    const isOdd = !!it.oddOnly;
+    const badge = isOdd ? '<span class="odd-badge">홀수월</span>' : '';
+    const rowCls = isOdd ? (isOddMonth() ? 'odd-only' : 'odd-locked') : '';
+    const inputAttr = (isOdd && !isOddMonth()) ? 'disabled' : '';
+    return `<tr class="${rowCls}" id="mrow_${i}">
+      <td class="name">${it.db}${badge}<span class="admin-badge" id="abadge_${i}" style="display:none">✎ 관리자 수정</span></td>
+      <td class="calc" id="std_${i}">—</td>
+      <td class="calc" id="need_${i}">—</td>
+      <td><input type="number" id="stk_${i}" min="0" value="0" ${inputAttr}></td>
+      <td class="apply"><input type="number" id="apl_${i}" min="0" value="0" ${inputAttr}
+        ${it.perPack ? `oninput="roundPack(${i})"` : ''}></td>
+      <td class="note-td">${it.note}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tissueTbody').innerHTML = tissueItems.map((it, i) => `
+    <tr id="trow_${i}">
+      <td class="name">${it.db}<span class="admin-badge" id="tbadge_${i}" style="display:none">✎ 관리자 수정</span><br><small style="color:#888;">1BOX = ${it.packsPerBox}PACK</small></td>
+      <td><input type="number" id="tstk_${i}" min="0" value="0"></td>
+      <td class="apply"><input type="number" id="tbox_${i}" min="0" value="0" oninput="calcPack(${i})"></td>
+      <td class="pack-display" id="tpack_${i}">0 PACK</td>
+      <td class="note-td">${it.note}</td>
+    </tr>`).join('');
+}
+
+// ── PACK 단위 자동 반올림 ──────────────────────────────────────
+function roundPack(i) {
+  const it = miscItems[i];
+  if (!it.perPack) return;
+  const inp = document.getElementById('apl_' + i);
+  let val = parseInt(inp.value) || 0;
+  if (val > 0 && val % it.perPack !== 0) {
+    val = Math.ceil(val / it.perPack) * it.perPack;
+    inp.value = val;
+  }
+}
+
+// ── BOX → PACK 표시 ───────────────────────────────────────────
+function calcPack(i) {
+  const box  = parseInt(document.getElementById('tbox_' + i).value) || 0;
+  const pack = box * tissueItems[i].packsPerBox;
+  document.getElementById('tpack_' + i).textContent = pack.toLocaleString() + ' PACK';
+}
+
+// ── 기준수량·필요수량 계산 표시 ───────────────────────────────
+const TISSUE_STD = { '건식티슈':100, '습식티슈':50, '위생장갑':30 };
+
+function updateCalc() {
+  const exp = expectedCount;
+  const to  = toCount;
+
+  miscItems.forEach((it, i) => {
+    const stdEl  = document.getElementById('std_'  + i);
+    const needEl = document.getElementById('need_' + i);
+
+    // 기준수량: miscItems에 정의된 고정값 사용
+    const std = it.std != null ? it.std : null;
+    if (stdEl) stdEl.textContent = std != null ? std : '—';
+
+    // 필요수량 계산 (std 없어도 need 수식 있으면 계산)
+    if (it.need) {
+      const n = it.need(exp, to, std);
+      needEl.textContent = n > 0 ? n.toLocaleString() : '—';
+    } else {
+      needEl.textContent = '—';
+    }
+  });
+}
+
+// ── 유저 정보 로드 ─────────────────────────────────────────────
+async function loadUserInfo() {
+  try {
+    const { data } = await supabaseClient
+      .from('users').select('acct, to_count')
+      .eq('username', branchId).single();
+    if (data) {
+      expectedCount = data.acct || 0;
+      toCount       = data.to_count || 0;
+      document.getElementById('expectedCount').value = expectedCount;
+      document.getElementById('toCount').value       = toCount;
+      updateCalc();
+    }
+  } catch(e) { console.warn('유저정보 로드 실패:', e); }
+}
+
+// ── 데이터 로드 ────────────────────────────────────────────────
+async function loadData() {
+  setStatus('데이터 로딩 중...', '');
+  try {
+    const { data, error } = await supabaseClient
+      .from('applications').select('*')
+      .eq('branch_id', branchId).eq('year', YEAR).eq('month', MONTH)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    if (!data) { setStatus('', ''); return; }
+
+    appData = data;
+
+    // expected_count: 저장된 값 있으면 사용
+    if (data.expected_count) {
+      expectedCount = data.expected_count;
+      document.getElementById('expectedCount').value = expectedCount;
+      updateCalc();
+    }
+
+    const items = data.items || [];
+
+    miscItems.forEach((it, i) => {
+      const r = items.find(x => (x.itemName || '').trim() === it.db);
+      if (r) {
+        document.getElementById('stk_' + i).value = r.last_stock || r.stock || 0;
+        document.getElementById('apl_' + i).value = r.apply || 0;
+      }
+    });
+    updateCalc();
+
+    tissueItems.forEach((it, i) => {
+      const r = items.find(x => (x.itemName || '').trim() === it.db);
+      if (r) {
+        const pack = r.packApply || 0;
+        const box  = r.box || (pack > 0 ? Math.ceil(pack / it.packsPerBox) : 0);
+        document.getElementById('tbox_' + i).value = box;
+        document.getElementById('tstk_' + i).value = r.last_stock || r.stock || 0;
+        calcPack(i);
+      }
+    });
+
+    // adminModified 항목 배지 표시
+    miscItems.forEach((it, i) => {
+      const r = items.find(x => (x.itemName || '').trim() === it.db);
+      if (r && r.adminModified) {
+        const badge = document.getElementById('abadge_' + i);
+        const row   = document.getElementById('mrow_' + i);
+        if (badge) badge.style.display = 'inline-block';
+        if (row)   row.classList.add('admin-modified');
+      }
+    });
+    tissueItems.forEach((it, i) => {
+      const r = items.find(x => (x.itemName || '').trim() === it.db);
+      if (r && r.adminModified) {
+        const badge = document.getElementById('tbadge_' + i);
+        const row   = document.getElementById('trow_' + i);
+        if (badge) badge.style.display = 'inline-block';
+        if (row)   row.classList.add('admin-modified');
+      }
+    });
+
+    setStatus('✅ 데이터 불러오기 완료', 'ok');
+  } catch(e) {
+    console.error(e);
+    setStatus('데이터 로드 오류: ' + e.message, 'err');
+  }
+}
+
+// ── 전체 저장 ──────────────────────────────────────────────────
+async function saveAll() {
+  if (locked) { alert('마감되어 저장할 수 없습니다.'); return; }
+  if (!branchId) { alert('로그인 정보가 없습니다.'); return; }
+
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
+  setStatus('저장 중...', '');
+
+  try {
+    let items = appData ? JSON.parse(JSON.stringify(appData.items || [])) : [];
+
+    const upsert = (name, fields) => {
+      const idx = items.findIndex(r => (r.itemName || '').trim() === name);
+      if (idx !== -1) Object.assign(items[idx], fields);
+      else items.push({ itemName: name, ...fields });
+    };
+
+    miscItems.forEach((it, i) => {
+      // 홀수월 전용 품목: 짝수월엔 저장 안 함
+      if (it.oddOnly && !isOddMonth()) return;
+      upsert(it.db, {
+        last_stock: parseInt(document.getElementById('stk_' + i).value) || 0,
+        apply:      parseInt(document.getElementById('apl_' + i).value) || 0,
+      });
+    });
+
+    tissueItems.forEach((it, i) => {
+      const box  = parseInt(document.getElementById('tbox_' + i).value) || 0;
+      const pack = box * it.packsPerBox;
+      upsert(it.db, {
+        last_stock: parseInt(document.getElementById('tstk_' + i).value) || 0,
+        packApply:  pack,
+        box:        box,
+      });
+    });
+
+    const payload = {
+      branch_id:      branchId,
+      branch_name:    localStorage.getItem('loginBranch') || '',
+      year:           YEAR,
+      month:          MONTH,
+      expected_count: expectedCount,
+      items:          items,
+    };
+
+    const { data, error } = await supabaseClient
+      .from('applications')
+      .upsert(payload, { onConflict: 'branch_id,year,month' })
+      .select().single();
+
+    if (error) throw error;
+    appData = data;
+    setStatus('✅ ' + new Date().toLocaleTimeString() + ' 저장 완료', 'ok');
+    alert('저장되었습니다.');
+  } catch(e) {
+    console.error(e);
+    setStatus('저장 오류: ' + e.message, 'err');
+    alert('저장 오류: ' + e.message);
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = '💾 저장';
+  }
+}
+
+// ── 마감 확인 ──────────────────────────────────────────────────
+async function checkLock() {
+  try {
+    const { data } = await supabaseClient
+      .from('settings').select('value').eq('key', 'is_closed').single();
+    if (data && data.value === 'true') applyLock();
+  } catch(e) {}
+}
+
+function applyLock() {
+  locked = true;
+  document.querySelectorAll('input[type="number"]:not([readonly])').forEach(inp => {
+    inp.disabled = true; inp.style.background = '#e0e0e0';
+  });
+  document.getElementById('saveBtn').disabled = true;
+  document.getElementById('closedBanner').style.display = 'block';
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('saveStatus');
+  el.textContent = msg;
+  el.className = 'save-status ' + (cls || '');
+}
+
+function logout() { localStorage.clear(); location.href = 'login.html'; }
+</script>
+</body>
+</html>
