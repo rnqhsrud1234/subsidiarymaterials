@@ -42,7 +42,9 @@
       <tr>
         <th>설치법인명</th>
         <th>배수통 잔여수량</th>
+        <th>배수통 요청수량</th>
         <th>배수호스 잔여수량</th>
+        <th>배수호스 요청수량</th>
         <th>드레인피팅 잔여수량</th>
         <th>단열재 잔여수량</th>
         <th>CP-AJS 배수호스(단위:롤)</th>
@@ -52,7 +54,9 @@
       <tr>
         <td class="left" id="corpName"></td>
         <td><input type="number" id="drainTankRemain" min="0" value="0"></td>
+        <td><input type="number" id="drainTankRequest" min="0" value="0"></td>
         <td><input type="number" id="drainHoseRemain" min="0" value="0"></td>
+        <td><input type="number" id="drainHoseRequest" min="0" value="0"></td>
         <td><input type="number" id="trainRemain" min="0" value="0"></td>
         <td><input type="number" id="insulationRemain" min="0" value="0"></td>
         <td><input type="number" id="cpAjsRoll" min="0" value="0"></td>
@@ -60,7 +64,9 @@
       <tr class="total">
         <td class="left">합계</td>
         <td id="sumDrainTankRemain">0</td>
+        <td id="sumDrainTankRequest">0</td>
         <td id="sumDrainHoseRemain">0</td>
+        <td id="sumDrainHoseRequest">0</td>
         <td id="sumTrainRemain">0</td>
         <td id="sumInsulationRemain">0</td>
         <td id="sumCpAjsRoll">0</td>
@@ -71,8 +77,8 @@
 
 <script>
 // Supabase 설정
-const SUPABASE_URL = 'https://yhuvkxuzolhpnzzbpigr.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_Ka0LELW2NrPf3q3dyO1Usg_EHYTS31K';
+const SUPABASE_URL = 'https://xkveqzawikqkkojbbtri.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_CFWOQHJirhT9XvHoevd3Mg_2Ik5eNRB';
 
 var supabaseClient = null;
 
@@ -109,17 +115,21 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 function calcSum() {
-  const drainTankRemain = parseInt(document.getElementById('drainTankRemain').value, 10) || 0;
-  const drainHoseRemain = parseInt(document.getElementById('drainHoseRemain').value, 10) || 0;
-  const trainRemain = parseInt(document.getElementById('trainRemain').value, 10) || 0;
+  const drainTankRemain  = parseInt(document.getElementById('drainTankRemain').value, 10) || 0;
+  const drainTankRequest = parseInt(document.getElementById('drainTankRequest').value, 10) || 0;
+  const drainHoseRemain  = parseInt(document.getElementById('drainHoseRemain').value, 10) || 0;
+  const drainHoseRequest = parseInt(document.getElementById('drainHoseRequest').value, 10) || 0;
+  const trainRemain      = parseInt(document.getElementById('trainRemain').value, 10) || 0;
   const insulationRemain = parseInt(document.getElementById('insulationRemain').value, 10) || 0;
-  const cpAjsRoll = parseInt(document.getElementById('cpAjsRoll').value, 10) || 0;
+  const cpAjsRoll        = parseInt(document.getElementById('cpAjsRoll').value, 10) || 0;
 
-  document.getElementById('sumDrainTankRemain').textContent = drainTankRemain;
-  document.getElementById('sumDrainHoseRemain').textContent = drainHoseRemain;
-  document.getElementById('sumTrainRemain').textContent = trainRemain;
+  document.getElementById('sumDrainTankRemain').textContent  = drainTankRemain;
+  document.getElementById('sumDrainTankRequest').textContent = drainTankRequest;
+  document.getElementById('sumDrainHoseRemain').textContent  = drainHoseRemain;
+  document.getElementById('sumDrainHoseRequest').textContent = drainHoseRequest;
+  document.getElementById('sumTrainRemain').textContent      = trainRemain;
   document.getElementById('sumInsulationRemain').textContent = insulationRemain;
-  document.getElementById('sumCpAjsRoll').textContent = cpAjsRoll;
+  document.getElementById('sumCpAjsRoll').textContent        = cpAjsRoll;
 }
 
 async function loadData() {
@@ -154,9 +164,11 @@ async function loadData() {
 
     console.log('✅ 데이터 불러오기 성공');
 
-    document.getElementById('drainTankRemain').value = data.drain_tank_remain || 0;
-    document.getElementById('drainHoseRemain').value = data.drain_hose_remain || 0;
-    document.getElementById('trainRemain').value = data.train_remain || 0;
+    document.getElementById('drainTankRemain').value  = data.drain_tank_remain  || 0;
+    document.getElementById('drainTankRequest').value = data.drain_tank_request || 0;
+    document.getElementById('drainHoseRemain').value  = data.drain_hose_remain  || 0;
+    document.getElementById('drainHoseRequest').value = data.drain_hose_request || 0;
+    document.getElementById('trainRemain').value      = data.train_remain       || 0;
     document.getElementById('insulationRemain').value = data.insulation_remain || 0;
     document.getElementById('cpAjsRoll').value = data.cp_ajs_roll || 0;
 
@@ -192,9 +204,11 @@ async function saveData() {
     branch_name: branchName || '',
     year: year,
     month: month,
-    drain_tank_remain: parseInt(document.getElementById('drainTankRemain').value, 10) || 0,
-    drain_hose_remain: parseInt(document.getElementById('drainHoseRemain').value, 10) || 0,
-    train_remain: parseInt(document.getElementById('trainRemain').value, 10) || 0,
+    drain_tank_remain:  parseInt(document.getElementById('drainTankRemain').value, 10)  || 0,
+    drain_tank_request: parseInt(document.getElementById('drainTankRequest').value, 10) || 0,
+    drain_hose_remain:  parseInt(document.getElementById('drainHoseRemain').value, 10)  || 0,
+    drain_hose_request: parseInt(document.getElementById('drainHoseRequest').value, 10) || 0,
+    train_remain:       parseInt(document.getElementById('trainRemain').value, 10)       || 0,
     insulation_remain: parseInt(document.getElementById('insulationRemain').value, 10) || 0,
     cp_ajs_roll: parseInt(document.getElementById('cpAjsRoll').value, 10) || 0
   };
@@ -234,14 +248,39 @@ async function checkAndApplyDeadlock() {
   try {
     const { data } = await supabaseClient
       .from('settings')
-      .select('value')
-      .eq('key', 'is_closed')
-      .single();
+      .select('key, value')
+      .in('key', ['is_closed', 'is_drain_closed']);
 
-    if (data && data.value === 'true') applyLock();
+    if (!data) return;
+
+    const isClosedRow      = data.find(function(r){ return r.key === 'is_closed'; });
+    const isDrainClosedRow = data.find(function(r){ return r.key === 'is_drain_closed'; });
+
+    if (isClosedRow && isClosedRow.value === 'true') {
+      applyLock();
+    } else if (isDrainClosedRow && isDrainClosedRow.value === 'true') {
+      applyDrainLock();
+    }
   } catch (e) {
     console.warn('마감 상태 확인 실패:', e);
   }
+}
+
+function applyDrainLock() {
+  ['drainTankRequest', 'drainHoseRequest'].forEach(function(id) {
+    const inp = document.getElementById(id);
+    if (!inp) return;
+    inp.disabled = true;
+    inp.style.backgroundColor = '#e0e0e0';
+    inp.style.cursor = 'not-allowed';
+  });
+
+  const banner = document.createElement('div');
+  banner.style.cssText = 'background:#e67e22; color:white; text-align:center; padding:10px; font-size:14px; font-weight:bold; margin-bottom:10px; border-radius:4px;';
+  banner.textContent = '🔒 배수통/배수호스 요청수량 입력이 마감되었습니다.';
+  const container = document.querySelector('.container');
+  const h3 = container.querySelector('h3');
+  container.insertBefore(banner, h3);
 }
 
 function applyLock() {

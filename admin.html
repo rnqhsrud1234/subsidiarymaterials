@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>부자재 취합 시스템 - 관리자</title>
+
+<!-- Supabase 클라이언트 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background:#f4f6f8;
+}
+.container {
+  width: 900px;
+  margin: 30px auto;
+  background:#fff;
+  padding:20px;
+}
+h2 {
+  margin-bottom:20px;
+}
+.section {
+  border:1px solid #ccc;
+  padding:15px;
+  margin-bottom:20px;
+}
+.section h3 {
+  margin-bottom:10px;
+}
+button {
+  padding:8px 14px;
+  background:#2c7be5;
+  color:#fff;
+  border:none;
+  cursor:pointer;
+  border-radius:4px;
+}
+button:hover {
+  background:#1a68d1;
+}
+.btn-logout {
+  background:#6c757d !important;
+  margin-left:15px;
+  font-size:13px;
+}
+.btn-logout:hover {
+  background:#5a6268 !important;
+}
+.btn-add {
+  background:#28a745 !important;
+}
+.btn-add:hover {
+  background:#218838 !important;
+}
+input[type="file"] {
+  margin-top:8px;
+}
+input[type="text"], input[type="password"], input[type="number"] {
+  padding:6px;
+  margin-right:8px;
+  border:1px solid #ccc;
+  border-radius:4px;
+}
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th, td {
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:left;
+}
+th {
+  background:#1f3a5a;
+  color:#fff;
+}
+.form-row {
+  margin-bottom:10px;
+}
+.note {
+  font-size:12px;
+  color:#666;
+  margin-top:5px;
+}
+</style>
+</head>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<body>
+
+<div class="container">
+  <h2 style="display:inline-block;">관리자 페이지</h2>
+  <button type="button" class="btn-logout" onclick="logout()">로그아웃</button>
+  <button type="button" id="btnOrderSheet" onclick="location.href='order_sheet.html'"
+    style="margin-left:8px; padding:8px 16px; font-size:13px; background:#6c3483; color:#fff; border:none; border-radius:4px; cursor:not-allowed; opacity:0.4;"
+    disabled title="마감 후 활성화됩니다">📋 발주서</button>
+
+  <!-- ★ 마감 관리 -->
+  <!-- 입력 현황 -->
+  <div class="section" id="statusSection">
+    <h3 style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+      📋 지점별 신청 입력 현황
+      <span style="display:flex; align-items:center; gap:8px;">
+        <span id="statusSummary" style="font-size:12px; font-weight:normal; color:#aaa;"></span>
+        <button onclick="loadStatusTable()" style="padding:4px 12px; font-size:12px; background:#2e6da4; color:#fff; border:none; border-radius:4px; cursor:pointer;">🔄 새로고침</button>
+      </span>
+    </h3>
+    <div id="statusTableWrap" style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:12px;" id="statusTable">
+        <thead>
+          <tr style="background:#1f3a5a; color:#fff;">
+            <th style="padding:7px 10px; text-align:left; min-width:130px;">설치법인명</th>
+            <th style="padding:7px 8px; text-align:center; width:90px;">부자재 신청</th>
+            <th style="padding:7px 8px; text-align:center; width:90px;">기타 부자재</th>
+            <th style="padding:7px 8px; text-align:center; width:90px;">후드 부자재</th>
+          </tr>
+        </thead>
+        <tbody id="statusTableBody">
+          <tr><td colspan="4" style="text-align:center; padding:16px; color:#aaa;">불러오는 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:11px; color:#888; margin-top:6px;">✅ 입력완료 &nbsp; ○ 미입력 &nbsp;&nbsp; 30초마다 자동 갱신</p>
+  </div>
+
+  <div class="section" id="deadlineSection">
+    <h3>🔒 신청 마감 관리</h3>
+    <p id="deadlineStatus" style="font-size:14px; font-weight:bold; margin-bottom:10px;">상태 확인 중...</p>
+    <button id="btnClose" onclick="setDeadline(true)" style="background:#dc3545 !important; margin-right:8px;">🔒 마감 (입력 잠금)</button>
+    <button id="btnOpen" onclick="setDeadline(false)" style="background:#28a745 !important;">🔓 마감 해제 (입력 허용)</button>
+    <p class="note">※ 마감 시 모든 지점의 부자재 신청·후드·기타 페이지 입력이 잠깁니다.</p>
+
+    <hr style="margin:16px 0; border-color:#eee;">
+    <h3>🚰 배수통/배수호스 요청수량 마감 관리</h3>
+    <p id="drainStatus" style="font-size:14px; font-weight:bold; margin-bottom:10px;">상태 확인 중...</p>
+    <button id="btnDrainClose" onclick="setDrainDeadline(true)" style="background:#e67e22 !important; margin-right:8px;">🔒 배수 마감 (요청수량 잠금)</button>
+    <button id="btnDrainOpen" onclick="setDrainDeadline(false)" style="background:#28a745 !important;">🔓 배수 마감 해제</button>
+    <p class="note">※ 배수 마감 시 기타 부자재 페이지의 배수통/배수호스 요청수량 입력만 잠깁니다.</p>
+  </div>
+
+
+  <!-- 0. 지점 계정 추가 (아이디/설치법인명만) -->
+  <div class="section">
+    <h3>⓪ 지점 계정 추가 (개별)</h3>
+    <div class="form-row">
+      <input type="text" id="newUsername" placeholder="아이디 (예: SA01)" style="width:120px;">
+      <input type="text" id="newBranchName" placeholder="설치법인명" style="width:180px;">
+      <input type="number" id="newAcct" placeholder="계정수" min="0" style="width:80px;">
+      <input type="number" id="newTo" placeholder="T/O" min="0" style="width:80px;">
+      <button class="btn-add" onclick="addBranchAccount()">계정 추가</button>
+    </div>
+    <p class="note">※ 새 지점 계정을 생성합니다. 초기 패스워드는 0000입니다. 계정수·T/O는 선택 입력(미입력 시 0).</p>
+  </div>
+
+  <!-- 1. 설치법인명 / 계정 / T/O 업로드 -->
+  <div class="section">
+    <h3>① 설치법인명 / 계정 / T·O 데이터 업로드</h3>
+    <p style="font-size:12px; color:#666;">
+      ※ 엑셀 형식: <b>아이디, 설치법인명, 계정, T/O</b> (4개 컬럼)
+    </p>
+    <input type="file" id="acctToUpload" accept=".xlsx,.xls">
+    <button onclick="uploadAcctTo()">업로드</button>
+    <p class="note">※ 기존 지점의 설치법인명, 계정수, T/O 인원을 업데이트합니다.</p>
+  </div>
+
+  <!-- 2. 당월 데이터 다운로드 -->
+  <div class="section">
+    <h3>② 당월 신청 데이터 다운로드</h3>
+    <button onclick="downloadExcel()" style="margin-right:8px;">① 금액별 신청 다운로드</button>
+    <button onclick="downloadExcelByBranch()" style="margin-right:8px; background:#17a2b8;">② 계정별 신청 다운로드</button>
+    <button onclick="downloadEtcExcel()" style="background:#28a745;">③ 기타 부자재 다운로드</button>
+  </div>
+
+  <!-- 3. 데이터 초기화 -->
+  <div class="section">
+    <h3>③ 당월 신청 데이터 초기화</h3>
+    <p style="color:red;">※ 주의: 모든 지점의 당월 신청 데이터가 삭제됩니다!</p>
+    <button onclick="resetCurrentMonthData()" style="background:#dc3545 !important;">당월 데이터 초기화</button>
+  </div>
+
+  <!-- 3-1. 전체 패스워드 초기화 -->
+  <div class="section">
+    <h3>③-1 전체 사용자 패스워드 초기화</h3>
+    <p style="color:red;">※ 주의: 모든 사용자(admin 제외)의 패스워드가 0000으로 초기화됩니다!</p>
+    <button onclick="resetAllPasswords()" style="background:#dc3545 !important;">전체 패스워드 0000으로 초기화</button>
+  </div>
+
+  <!-- 3-2. 특정 사용자 패스워드 초기화 -->
+  <div class="section">
+    <h3>③-2 특정 사용자 패스워드 초기화</h3>
+    <div class="form-row">
+      <input type="text" id="resetUsername" placeholder="아이디 (예: SA01)" style="width:150px;">
+      <button onclick="resetUserPassword()" style="background:#ffc107 !important; color:#000;">패스워드 0000으로 초기화</button>
+    </div>
+    <p class="note">※ 입력한 아이디의 패스워드를 0000으로 초기화합니다.</p>
+  </div>
+
+  <!-- 3-3. 특정 사용자 삭제 -->
+  <div class="section">
+    <h3>③-3 특정 사용자 삭제</h3>
+    <div class="form-row">
+      <input type="text" id="deleteUsername" placeholder="아이디 (예: SA01)" style="width:150px;">
+      <button onclick="deleteUser()" style="background:#dc3545 !important;">계정 삭제</button>
+    </div>
+    <p class="note">※ 입력한 아이디를 완전히 삭제합니다. (admin 계정은 삭제 불가)</p>
+  </div>
+
+  <!-- 3-4. 전체 계정 목록 초기화 -->
+  <div class="section">
+    <h3>③-4 전체 계정 목록 초기화</h3>
+    <p style="color:red;">※ 위험: 모든 사용자 계정(admin 제외)이 완전히 삭제됩니다!</p>
+    <button onclick="deleteAllUsers()" style="background:#dc3545 !important;">전체 계정 삭제 (admin 제외)</button>
+  </div>
+
+  <!-- 4. 업로드된 지점 계정 목록 -->
+  <div class="section">
+    <h3>④ 업로드된 설치법인명 계정 목록</h3>
+    <table id="userTable" border="1" style="width:100%; border-collapse:collapse; font-size:13px;">
+      <thead>
+        <tr style="background:#1f3a5a; color:#fff;">
+          <th>지점ID</th>
+          <th>설치법인명</th>
+          <th>권한</th>
+          <th>계정수</th>
+          <th>T/O</th>
+          <th style="width:80px;"></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- 5. 배송지 관리 -->
+  <div class="section" id="deliverySection">
+    <h3>⑤ 배송지 관리</h3>
+    <p style="font-size:12px; color:#666; margin-bottom:12px;">※ 설치법인별 물품 수령 정보를 관리합니다.</p>
+
+    <!-- 수기 추가 폼 -->
+    <div style="background:#f8f9fa; border-radius:6px; padding:14px; margin-bottom:16px;">
+      <b style="font-size:13px; color:#1f3a5a;">➕ 수기 추가</b>
+      <div class="form-row" style="margin-top:10px; flex-wrap:wrap; gap:6px;">
+        <input type="text" id="dlv_branch" placeholder="받는곳 (설치법인명)" style="width:160px;">
+        <input type="text" id="dlv_manager" placeholder="담당자명" style="width:110px;">
+        <input type="text" id="dlv_phone" placeholder="연락처" style="width:130px;">
+        <input type="text" id="dlv_address" placeholder="주소" style="flex:1; min-width:200px;">
+        <button class="btn-add" onclick="addDeliveryRow()">추가</button>
+      </div>
+    </div>
+
+    <!-- 엑셀 업로드 -->
+    <div style="margin-bottom:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span style="font-size:13px; font-weight:bold; color:#1f3a5a;">📂 엑셀 업로드</span>
+      <span style="font-size:11px; color:#888;">형식: <b>받는곳, 담당자, 연락처, 주소</b> (4개 컬럼)</span>
+      <input type="file" id="dlvExcelFile" accept=".xlsx,.xls" style="font-size:12px;">
+      <button onclick="uploadDeliveryExcel()" style="padding:5px 14px; background:#1f3a5a; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:12px;">업로드</button>
+      <button onclick="downloadDeliveryTemplate()" style="padding:5px 14px; background:#6c757d; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:12px;">📥 양식 다운로드</button>
+    </div>
+
+    <!-- 목록 테이블 -->
+    <table style="width:100%; border-collapse:collapse; font-size:13px;" id="deliveryTable">
+      <thead>
+        <tr style="background:#1f3a5a; color:#fff;">
+          <th style="padding:7px 10px; text-align:left;">받는곳</th>
+          <th style="padding:7px 10px; text-align:left;">담당자</th>
+          <th style="padding:7px 10px; text-align:left;">연락처</th>
+          <th style="padding:7px 10px; text-align:left;">주소</th>
+          <th style="padding:7px 6px; width:70px;"></th>
+          <th style="padding:7px 6px; width:60px;">삭제</th>
+        </tr>
+      </thead>
+      <tbody id="deliveryTableBody">
+        <tr><td colspan="5" style="text-align:center; color:#aaa; padding:16px;">불러오는 중...</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:8px;">※ 배송지 정보는 Supabase delivery_info 테이블에 저장됩니다.</p>
+  </div>
+</div>
+
+<script>
+// Supabase 설정
+const SUPABASE_URL = 'https://xkveqzawikqkkojbbtri.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_CFWOQHJirhT9XvHoevd3Mg_2Ik5eNRB';
+
+var supabaseClient = null;
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+  const role = localStorage.getItem('loginRole');
+  if (role !== 'admin') {
+    alert('관리자만 접근 가능합니다.');
+    location.href = 'login.html';
+    return;
+  }
+
+  // 마감/해제 버튼은 Supabase 응답 전에도 일단 활성화
+  const _btnClose = document.getElementById('btnClose');
+  const _btnOpen  = document.getElementById('btnOpen');
+  if (_btnClose) { _btnClose.disabled = false; _btnClose.style.opacity = '1'; }
+  if (_btnOpen)  { _btnOpen.disabled  = false; _btnOpen.style.opacity  = '1'; }
+
+  if (typeof window.supabase !== 'undefined') {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase 초기화 완료');
+    renderUserTable();
+    loadDeadlineStatus();
+    loadDeliveryList();
+    loadStatusTable();
+    setInterval(loadStatusTable, 30000);
+  } else {
+    console.error('❌ Supabase 라이브러리 로드 실패');
+    alert('Supabase 초기화 실패. 페이지를 새로고침해주세요.');
+  }
+});
+
+// 엑셀 파일 검증
+function validateExcelFile(file) {
+  const validExts = ['.xlsx', '.xls'];
+  const fileName = file.name.toLowerCase();
+  const isValid = validExts.some(ext => fileName.endsWith(ext));
+  if (!isValid) {
+    alert('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
+  }
+  return isValid;
+}
+
+// 지점 계정 추가
+async function addBranchAccount() {
+  const username  = document.getElementById('newUsername').value.trim();
+  const branchName = document.getElementById('newBranchName').value.trim();
+  const acct      = parseInt(document.getElementById('newAcct').value) || 0;
+  const toCount   = parseInt(document.getElementById('newTo').value) || 0;
+
+  if (!username || !branchName) {
+    alert('아이디와 설치법인명을 모두 입력하세요.');
+    return;
+  }
+
+  if (!supabaseClient) {
+    alert('Supabase가 초기화되지 않았습니다.');
+    return;
+  }
+
+  try {
+    const { data: existing } = await supabaseClient
+      .from('users')
+      .select('username')
+      .eq('username', username)
+      .single();
+
+    if (existing) {
+      alert('이미 존재하는 아이디입니다.');
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from('users')
+      .insert({
+        username: username,
+        password: '0000',
+        branch_name: branchName,
+        role: 'user',
+        acct: acct,
+        to_count: toCount
+      });
+
+    if (error) throw error;
+
+    alert('지점 계정이 추가되었습니다.\n\n아이디: ' + username + '\n설치법인명: ' + branchName + '\n계정수: ' + acct + '\nT/O: ' + toCount + '\n초기 패스워드: 0000');
+
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newBranchName').value = '';
+    document.getElementById('newAcct').value = '';
+    document.getElementById('newTo').value = '';
+
+    renderUserTable();
+  } catch (error) {
+    console.error('계정 추가 오류:', error);
+    alert('계정 추가 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 설치법인명/계정/TO 업로드
+async function uploadAcctTo() {
+  const fileInput = document.getElementById('acctToUpload');
+  const file = fileInput.files[0];
+  
+  if (!file) {
+    alert('엑셀 파일을 선택하세요.');
+    return;
+  }
+  
+  if (!validateExcelFile(file)) return;
+
+  if (!supabaseClient) {
+    alert('Supabase가 초기화되지 않았습니다.');
+    return;
+  }
+
+  const reader = new FileReader();
+  
+  reader.onload = async function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }).map(function(row) {
+        const cleaned = {};
+        Object.keys(row).forEach(function(key) {
+          cleaned[key.trim()] = row[key];
+        });
+        return cleaned;
+      });
+
+      console.log('읽은 행 수:', rows.length);
+      console.log('첫 번째 행:', rows[0]);
+
+      let successCount = 0;
+      let errorCount = 0;
+      let createdCount = 0;
+      const errors = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const username = String(row['아이디'] || '').trim();
+        
+        if (!username) {
+          console.log('아이디 없는 행 건너뜀');
+          continue;
+        }
+
+        try {
+          const { data: existing, error: checkError } = await supabaseClient
+            .from('users')
+            .select('username')
+            .eq('username', username)
+            .single();
+
+          if (checkError && checkError.code !== 'PGRST116') {
+            throw checkError;
+          }
+
+          const branchName = String(row['설치법인명'] || '').trim();
+          
+          if (!existing) {
+            // 계정이 없으면 새로 생성
+            console.log('새 계정 생성:', username);
+            createdCount++;
+            const { error: insertError } = await supabaseClient
+              .from('users')
+              .insert({
+                username: username,
+                password: '0000',
+                branch_name: branchName || username,
+                role: 'user',
+                acct: parseInt(row['계정']) || 0,
+                to_count: parseInt(row['T/O']) || 0
+              });
+
+            if (insertError) throw insertError;
+          } else {
+            // 계정이 있으면 업데이트
+            const updateData = {
+              acct: parseInt(row['계정']) || 0,
+              to_count: parseInt(row['T/O']) || 0
+            };
+            
+            if (branchName) {
+              updateData.branch_name = branchName;
+            }
+            
+            const { error: updateError } = await supabaseClient
+              .from('users')
+              .update(updateData)
+              .eq('username', username);
+
+            if (updateError) throw updateError;
+            console.log('업데이트 성공:', username);
+            successCount++;
+          }
+        } catch (err) {
+          console.error('업데이트 오류 (' + username + '):', err);
+          errors.push(username + ': ' + err.message);
+          errorCount++;
+        }
+      }
+
+      let message = '설치법인명/계정/T·O 업로드 완료!\n\n업데이트: ' + successCount + '개\n신규생성: ' + createdCount + '개\n실패: ' + errorCount + '개';
+      
+      if (errors.length > 0 && errors.length <= 10) {
+        message += '\n\n오류 내역:\n' + errors.join('\n');
+      }
+
+      alert(message);
+      renderUserTable();
+      
+    } catch (error) {
+      console.error('파일 읽기 오류:', error);
+      alert('엑셀 파일을 읽는 중 오류가 발생했습니다: ' + error.message);
+    }
+  };
+
+  reader.onerror = function() {
+    alert('파일을 읽을 수 없습니다.');
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+// 엑셀 다운로드
+async function downloadExcel() {
+  if (!supabaseClient) { alert('Supabase가 초기화되지 않았습니다.'); return; }
+
+  const now = new Date();
+  const year  = now.getFullYear().toString().slice(-2);
+  const month = now.getMonth() + 1;
+
+  try {
+    const results = await Promise.all([
+      supabaseClient.from('applications').select('*').eq('year', year).eq('month', month),
+      supabaseClient.from('hood_applications').select('*').eq('year', year).eq('month', month),
+      supabaseClient.from('users').select('*').neq('role','admin').order('branch_name'),
+    ]);
+    results.forEach(function(r){ if(r.error) throw r.error; });
+
+    const applications = results[0].data || [];
+    const hoodApps     = results[1].data || [];
+    const users        = results[2].data || [];
+
+    if (applications.length === 0 && hoodApps.length === 0) {
+      alert('다운로드할 당월 신청 데이터가 없습니다.'); return;
+    }
+
+    // 품목 정의
+    const miscItems = [
+      {name:'튜빙선(1P)',                label:'튜빙선(1P)',               price:24000,  perPack:null,  field:'apply'},
+      {name:'튜빙선(2P)',                label:'튜빙선(2P)',               price:21500,  perPack:null,  field:'apply'},
+      {name:'튜빙선(1P, 3/8)',           label:'튜빙선(1P,3/8)',           price:19750,  perPack:null,  field:'apply'},
+      {name:'튜빙선_ACS (LLD T/B 1/2)', label:'튜빙선_ACS(LLD T/B 1/2)', price:25000,  perPack:null,  field:'apply'},
+      {name:'테프론',                    label:'테프론',                   price:300,    perPack:null,  field:'apply'},
+      {name:'토끼코크',                  label:'토끼코크',                 price:1500,   perPack:null,  field:'apply'},
+      {name:'피스',                      label:'피스',                     price:4300,   perPack:1000,  field:'apply'},
+      {name:'철판피스',                  label:'철판피스',                 price:3800,   perPack:1000,  field:'apply'},
+      {name:'새들(4N)',                  label:'새들(4N)',                 price:7800,   perPack:1000,  field:'apply'},
+      {name:'새들(6N)',                  label:'새들(6N)',                 price:11500,  perPack:1000,  field:'apply'},
+      {name:'케이블타이(대)',            label:'케이블타이(대)',           price:15000,  perPack:1000,  field:'apply'},
+      {name:'케이블타이(소)',            label:'케이블타이(중)',           price:3400,   perPack:1000,  field:'apply'},
+      {name:'마운팅베이스',              label:'마운팅베이스',             price:19500,  perPack:1000,  field:'apply'},
+      {name:'단 니플',                   label:'단 니플',                  price:900,    perPack:20,    field:'apply'},
+      {name:'연결니플',                  label:'연결 니플',                price:900,    perPack:20,    field:'apply'},
+      {name:'전기테이프',                label:'전기테이프',               price:500,    perPack:null,  field:'apply'},
+      {name:'배수용큐방',                label:'배수용큐방',               price:40000,  perPack:1000,  field:'apply'},
+      {name:'천공앙카',                  label:'천공앙카',                 price:110,    perPack:10,    field:'apply'},
+      {name:'신형고강도(흰색) 2호',      label:'신형고강도(흰색) 2호',     price:485,    perPack:100,   field:'apply'},
+      {name:'신형고강도(흰색) 3호',      label:'신형고강도(흰색) 3호',     price:758,    perPack:70,    field:'apply'},
+      {name:'건식티슈',                  label:'건식티슈',                 price:830,    perPack:null,  field:'packApply'},
+      {name:'습식티슈',                  label:'습식티슈',                 price:930,    perPack:null,  field:'packApply'},
+      {name:'위생장갑',                  label:'위생장갑',                 price:1770,   perPack:null,  field:'packApply'},
+    ];
+    const hoodItems = [
+      {key:'pb1',     label:'PB-1 세정제',      price:1500},
+      {key:'tape',    label:'은박테이프',        price:5200},
+      {key:'flex',    label:'알루미늄 후렉시블', price:15500},
+      {key:'reducer', label:'환기자재 레듀샤',   price:2500},
+    ];
+
+    // 신청한 법인만 (branch_name 순)
+    const branchSet = new Set();
+    applications.forEach(function(a){ branchSet.add(a.branch_id); });
+    hoodApps.forEach(function(h){ branchSet.add(h.branch_id); });
+    const branches = users.filter(function(u){ return branchSet.has(u.username); });
+
+    const getItemVal = function(app, name, field) {
+      if (!app || !app.items) return 0;
+      const it = app.items.find(function(i){ return (i.itemName||'').trim()===name; });
+      return it ? Number(it[field]||0) : 0;
+    };
+    const dash = '-';
+    const aoa = [];
+
+    // ■ 설치법인 설치 부자재
+    aoa.push(['■ 설치법인 설치 부자재']);
+    const h1 = ['담당부서', '품목', '단가'];
+    branches.forEach(function(u){ h1.push(u.branch_name||u.username, ''); });
+    h1.push('계', '');
+    aoa.push(h1);
+    const h2 = ['', '', ''];
+    branches.forEach(function(){ h2.push('수량','금액'); });
+    h2.push('수량','금액');
+    aoa.push(h2);
+
+    const miscTotQty = new Array(branches.length).fill(0);
+    const miscTotAmt = new Array(branches.length).fill(0);
+
+    miscItems.forEach(function(it) {
+      const row = ['고객지원과', it.label, it.price];
+      let sumQty = 0, sumAmt = 0;
+      branches.forEach(function(u, bi) {
+        const app = applications.find(function(a){ return a.branch_id===u.username; });
+        const qty = getItemVal(app, it.name, it.field);
+        const amt = qty * it.price;
+        row.push(qty||dash, qty ? amt : dash);
+        if (qty) { sumQty+=qty; sumAmt+=amt; miscTotQty[bi]+=qty; miscTotAmt[bi]+=amt; }
+      });
+      const packNote = (sumQty && it.perPack) ? Math.round(sumQty/it.perPack)+'PACK' : '';
+      row.push(sumQty||dash, sumQty ? sumAmt : dash);
+      if (packNote) row.push(packNote);
+      aoa.push(row);
+    });
+
+    const miscSumRow = ['합계', '', ''];
+    let miscGrandQty = 0, miscGrandAmt = 0;
+    branches.forEach(function(u, bi) {
+      miscSumRow.push(miscTotQty[bi]||dash, miscTotAmt[bi]||dash);
+      miscGrandQty += miscTotQty[bi]; miscGrandAmt += miscTotAmt[bi];
+    });
+    miscSumRow.push(miscGrandQty, miscGrandAmt);
+    aoa.push(miscSumRow);
+    aoa.push([]);
+
+    // ■ 후드설치 부자재
+    aoa.push(['■ 후드설치 부자재']);
+    const h1h = ['담당부서', '품목', '단가'];
+    branches.forEach(function(u){ h1h.push(u.branch_name||u.username, ''); });
+    h1h.push('계', '');
+    aoa.push(h1h);
+    const h2h = ['', '', ''];
+    branches.forEach(function(){ h2h.push('수량','금액'); });
+    h2h.push('수량','금액');
+    aoa.push(h2h);
+
+    const hoodTotQty = new Array(branches.length).fill(0);
+    const hoodTotAmt = new Array(branches.length).fill(0);
+
+    hoodItems.forEach(function(it) {
+      const row = ['고객지원과', it.label, it.price];
+      let sumQty = 0, sumAmt = 0;
+      branches.forEach(function(u, bi) {
+        const hood = hoodApps.find(function(h){ return h.branch_id===u.username; });
+        const qty = hood ? Number(hood[it.key]||0) : 0;
+        const amt = qty * it.price;
+        row.push(qty||dash, qty ? amt : dash);
+        if (qty) { sumQty+=qty; sumAmt+=amt; hoodTotQty[bi]+=qty; hoodTotAmt[bi]+=amt; }
+      });
+      row.push(sumQty||dash, sumQty ? sumAmt : dash);
+      aoa.push(row);
+    });
+
+    const hoodSumRow = ['합계', '', ''];
+    let hoodGrandQty = 0, hoodGrandAmt = 0;
+    branches.forEach(function(u, bi) {
+      hoodSumRow.push(hoodTotQty[bi]||dash, hoodTotAmt[bi]||dash);
+      hoodGrandQty += hoodTotQty[bi]; hoodGrandAmt += hoodTotAmt[bi];
+    });
+    hoodSumRow.push(hoodGrandQty, hoodGrandAmt);
+    aoa.push(hoodSumRow);
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '설치부자재신청현황');
+    const fileName = '설치부자재_신청현황_20' + year + '년' + month + '월.xlsx';
+    XLSX.writeFile(wb, fileName);
+    console.log('✅ 다운로드 완료');
+
+  } catch (error) {
+    console.error('다운로드 오류:', error);
+    alert('다운로드 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 당월 데이터 초기화
+async function resetCurrentMonthData() {
+  if (!supabaseClient) {
+    alert('Supabase가 초기화되지 않았습니다.');
+    return;
+  }
+
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = now.getMonth() + 1;
+
+  if (!confirm('정말로 ' + year + '년 ' + month + '월 모든 지점의 신청 데이터를 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다!')) return;
+  if (!confirm('정말 진행하시겠습니까? (최종 확인)')) return;
+
+  try {
+    const results = await Promise.all([
+      supabaseClient.from('applications').delete().eq('year', year).eq('month', month),
+      supabaseClient.from('hood_applications').delete().eq('year', year).eq('month', month),
+      supabaseClient.from('etc_applications').delete().eq('year', year).eq('month', month)
+    ]);
+
+    if (results[0].error) throw results[0].error;
+    if (results[1].error) throw results[1].error;
+    if (results[2].error) throw results[2].error;
+
+    console.log('🗑️ 데이터 초기화 완료');
+    alert(year + '년 ' + month + '월 데이터 초기화가 완료되었습니다.');
+  } catch (error) {
+    console.error('초기화 오류:', error);
+    alert('데이터 초기화 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 전체 패스워드 초기화
+async function resetAllPasswords() {
+  if (!supabaseClient) {
+    alert('Supabase가 초기화되지 않았습니다.');
+    return;
+  }
+
+  if (!confirm('정말로 모든 사용자(admin 제외)의 패스워드를 0000으로 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다!')) return;
+  if (!confirm('정말 진행하시겠습니까? (최종 확인)')) return;
+
+  try {
+    const { error } = await supabaseClient
+      .from('users')
+      .update({ password: '0000' })
+      .neq('role', 'admin');
+
+    if (error) throw error;
+
+    console.log('🔐 전체 패스워드 초기화 완료');
+    alert('모든 사용자의 패스워드가 0000으로 초기화되었습니다.');
+  } catch (error) {
+    console.error('패스워드 초기화 오류:', error);
+    alert('패스워드 초기화 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 특정 사용자 패스워드 초기화
+async function resetUserPassword() {
+  const username = document.getElementById('resetUsername').value.trim();
+  
+  if (!username) {
+    alert('아이디를 입력하세요.');
+    return;
+  }
+
+  if (!supabaseClient) {
+    alert('Supabase가 초기화되지 않았습니다.');
+    return;
+  }
+
+  if (username.toLowerCase() === 'admin') {
+    alert('admin 계정의 패스워드는 초기화할 수 없습니다.');
+    return;
+  }
+
+  if (!confirm('"' + username + '" 계정의 패스워드를 0000으로 초기화하시겠습니까?')) return;
+
+  try {
+    const { data: user, error: checkError } = await supabaseClient
+      .from('users')
+      .select('username, branch_name')
+      .eq('username', username)
+      .single();
+
+    if (checkError && checkError.code === 'PGRST116') {
+      alert('존재하지 않는 아이디입니다.');
+      return;
+    }
+
+    if (checkError) throw checkError;
+
+    const { error: updateError } = await supabaseClient
+      .from('users')
+      .update({ password: '0000' })
+      .eq('username', username);
+
+    if (updateError) throw updateError;
+
+    console.log('🔐 패스워드 초기화 완료:', username);
+    alert('"' + username + '" (' + (user.branch_name || '') + ') 계정의 패스워드가 0000으로 초기화되었습니다.');
+    
+    document.getElementById('resetUsername').value = '';
+  } catch (error) {
+    console.error('패스워드 초기화 오류:', error);
+    alert('패스워드 초기화 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 특정 사용자 삭제
+async function deleteUser() {
+  const username = document.getElementById('deleteUsername').value.trim();
+  
+  if (!username) {
+    alert('삭제할 아이디를 입력하세요.');
+    return;
+  }
+
+  if (!supabaseClient) {
+    alert('Supabase가 초기화되지 않았습니다.');
+    return;
+  }
+
+  if (username.toLowerCase() === 'admin') {
+    alert('admin 계정은 삭제할 수 없습니다.');
+    return;
+  }
+
+  try {
+    const { data: user, error: checkError } = await supabaseClient
+      .from('users')
+      .select('username, branch_name')
+      .eq('username', username)
+      .single();
+
+    if (checkError && checkError.code === 'PGRST116') {
+      alert('존재하지 않는 아이디입니다.');
+      return;
+    }
+
+    if (checkError) throw checkError;
+
+    if (!confirm('정말로 "' + username + '" (' + (user.branch_name || '') + ') 계정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다!')) return;
+
+    const { error: deleteError } = await supabaseClient
+      .from('users')
+      .delete()
+      .eq('username', username);
+
+    if (deleteError) throw deleteError;
+
+    console.log('🗑️ 계정 삭제 완료:', username);
+    alert('"' + username + '" 계정이 삭제되었습니다.');
+    
+    document.getElementById('deleteUsername').value = '';
+    
+    renderUserTable();
+  } catch (error) {
+    console.error('계정 삭제 오류:', error);
+    alert('계정 삭제 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 전체 계정 삭제
+async function deleteAllUsers() {
+  if (!supabaseClient) {
+    alert('Supabase가 초기화되지 않았습니다.');
+    return;
+  }
+
+  if (!confirm('정말로 모든 사용자 계정(admin 제외)을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며 매우 위험합니다!')) return;
+  if (!confirm('정말 진행하시겠습니까? (최종 확인)')) return;
+  if (!confirm('마지막 확인입니다. 정말로 모든 계정을 삭제하시겠습니까?')) return;
+
+  try {
+    const { error } = await supabaseClient
+      .from('users')
+      .delete()
+      .neq('role', 'admin');
+
+    if (error) throw error;
+
+    console.log('🗑️ 전체 계정 삭제 완료');
+    alert('모든 사용자 계정(admin 제외)이 삭제되었습니다.');
+    
+    renderUserTable();
+  } catch (error) {
+    console.error('전체 계정 삭제 오류:', error);
+    alert('계정 삭제 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 사용자 테이블 렌더링
+async function loadStatusTable() {
+  const tbody = document.getElementById('statusTableBody');
+  const summary = document.getElementById('statusSummary');
+  if (!tbody || !supabaseClient) return;
+  const now = new Date();
+  const year  = now.getFullYear().toString().slice(-2);
+  const month = now.getMonth() + 1;
+  try {
+    const [usersRes, appsRes, hoodsRes, etcRes] = await Promise.all([
+      supabaseClient.from('users').select('username, branch_name').neq('role','admin').order('branch_name'),
+      supabaseClient.from('applications').select('branch_id, items').eq('year', year).eq('month', month),
+      supabaseClient.from('hood_applications').select('branch_id, pb1, tape, flex, reducer, service_bag').eq('year', year).eq('month', month),
+      supabaseClient.from('etc_applications').select('branch_id').eq('year', year).eq('month', month),
+    ]);
+    const users = usersRes.data || [];
+    const apps  = appsRes.data  || [];
+    const hoods = hoodsRes.data || [];
+    const etcs  = etcRes.data   || [];
+    const TISSUE = ['건식티슈','습식티슈','위생장갑'];
+    const MISC   = ['튜빙선(1P)','튜빙선(2P)','테프론','토끼코크','피스','철판피스',
+                    '새들(4N)','새들(6N)','케이블타이(대)','케이블타이(소)',
+                    '마운팅베이스','단 니플','연결니플','전기테이프','배수용큐방','천공앙카'];
+    let doneCount = 0;
+    tbody.innerHTML = '';
+    users.forEach(function(u) {
+      const app  = apps.find(function(a){ return a.branch_id===u.username; });
+      const hood = hoods.find(function(h){ return h.branch_id===u.username; });
+      const etc  = etcs.find(function(e){ return e.branch_id===u.username; });
+      const items = (app && app.items) ? app.items : [];
+      const getVal = function(name, field) {
+        const it = items.find(function(i){ return (i.itemName||'').trim()===name; });
+        return it ? Number(it[field]||0) : 0;
+      };
+      const hasMisc   = MISC.some(function(n){ return getVal(n,'apply')>0; });
+      const hasTissue = TISSUE.some(function(n){ return getVal(n,'packApply')>0; });
+      const hasHood   = hood && (Number(hood.pb1||0)+Number(hood.tape||0)+Number(hood.flex||0)+Number(hood.reducer||0))>0;
+      const hasBag    = hood && Number(hood.service_bag||0)>0;
+      const hasEtc    = !!etc;
+      const hasApp    = hasMisc || hasTissue;
+      const hasHoodAll= hasHood || hasBag;
+      const anyDone   = hasApp || hasEtc || hasHoodAll;
+      if (anyDone) doneCount++;
+      const cell = function(flag) {
+        return flag
+          ? '<td style="text-align:center;color:#28a745;font-size:15px;font-weight:bold;">✅</td>'
+          : '<td style="text-align:center;color:#bbb;">○</td>';
+      };
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid #eee';
+      tr.style.background   = anyDone ? '#fff' : '#fafafa';
+      tr.innerHTML =
+        '<td style="padding:5px 10px;font-size:12px;' + (anyDone?'':'color:#bbb;') + '">' + (u.branch_name||u.username) + '</td>' +
+        cell(hasApp) + cell(hasEtc) + cell(hasHoodAll);
+      tbody.appendChild(tr);
+    });
+    if (summary) summary.textContent = doneCount + ' / ' + users.length + '개 법인 입력완료 · ' + now.toLocaleTimeString() + ' 기준';
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#e74c3c;padding:12px;">불러오기 오류: ' + e.message + '</td></tr>';
+  }
+}
+
+async function renderUserTable() {
+  if (!supabaseClient) return;
+
+  const tbody = document.querySelector('#userTable tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">불러오는 중...</td></tr>';
+
+  try {
+    const { data: users, error } = await supabaseClient
+      .from('users').select('*').order('username');
+    if (error) throw error;
+    tbody.innerHTML = '';
+    if (!users || users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">업로드된 설치법인명 계정이 없습니다.</td></tr>';
+      return;
+    }
+    users.forEach(function(u) {
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid #eee';
+      ['username','branch_name','role'].forEach(function(key) {
+        const td = document.createElement('td');
+        td.style.cssText = 'padding:5px 8px; font-size:12px;';
+        td.textContent = u[key] || '-';
+        tr.appendChild(td);
+      });
+      // 계정수 입력
+      const acctTd = document.createElement('td');
+      acctTd.style.cssText = 'padding:4px 6px; text-align:center;';
+      const acctInput = document.createElement('input');
+      acctInput.type = 'number'; acctInput.value = u.acct || 0; acctInput.min = 0; acctInput.disabled = true;
+      acctInput.style.cssText = 'width:64px; padding:3px 5px; border:1px solid #ccc; border-radius:3px; font-size:12px; text-align:center; background:#f5f5f5;';
+      acctTd.appendChild(acctInput); tr.appendChild(acctTd);
+      // T/O 입력
+      const toTd = document.createElement('td');
+      toTd.style.cssText = 'padding:4px 6px; text-align:center;';
+      const toInput = document.createElement('input');
+      toInput.type = 'number'; toInput.value = u.to_count || 0; toInput.min = 0; toInput.disabled = true;
+      toInput.style.cssText = 'width:64px; padding:3px 5px; border:1px solid #ccc; border-radius:3px; font-size:12px; text-align:center; background:#f5f5f5;';
+      toTd.appendChild(toInput); tr.appendChild(toTd);
+      // 수정/저장 버튼
+      const btnTd = document.createElement('td');
+      btnTd.style.cssText = 'padding:4px 6px; text-align:center;';
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '수정';
+      editBtn.style.cssText = 'padding:3px 10px; background:#1f3a5a; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:12px;';
+      editBtn.addEventListener('click', function() {
+        if (acctInput.disabled) {
+          acctInput.disabled = false; acctInput.style.background = '#fffde7';
+          toInput.disabled   = false; toInput.style.background   = '#fffde7';
+          editBtn.textContent = '저장'; editBtn.style.background = '#28a745';
+        } else {
+          editBtn.disabled = true; editBtn.textContent = '저장 중...';
+          Promise.all([
+            saveUserField(u.username, 'acct',     parseInt(acctInput.value)||0),
+            saveUserField(u.username, 'to_count', parseInt(toInput.value)||0),
+          ]).then(function() {
+            acctInput.disabled = true; acctInput.style.background = '#f5f5f5';
+            toInput.disabled   = true; toInput.style.background   = '#f5f5f5';
+            editBtn.textContent = '수정'; editBtn.style.background = '#1f3a5a';
+            editBtn.disabled = false;
+          });
+        }
+      });
+      btnTd.appendChild(editBtn); tr.appendChild(btnTd);
+      tbody.appendChild(tr);
+    });
+    console.log('✅ 사용자 테이블 렌더링 완료:', users.length + '개');
+  } catch (error) {
+    console.error('테이블 렌더링 오류:', error);
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">불러오기 실패: ' + error.message + '</td></tr>';
+  }
+}
+
+// 마감 상태 로드
+async function loadDeadlineStatus() {
+  if (!supabaseClient) return;
+  try {
+    const { data } = await supabaseClient
+      .from('settings')
+      .select('key, value')
+      .in('key', ['is_closed', 'is_drain_closed']);
+
+    const isClosedRow      = data && data.find(function(r){ return r.key === 'is_closed'; });
+    const isDrainClosedRow = data && data.find(function(r){ return r.key === 'is_drain_closed'; });
+
+    updateDeadlineUI(isClosedRow && isClosedRow.value === 'true');
+    updateDrainUI(isDrainClosedRow && isDrainClosedRow.value === 'true');
+  } catch (e) {
+    updateDeadlineUI(false);
+    updateDrainUI(false);
+  }
+}
+
+function updateDrainUI(isClosed) {
+  const statusEl     = document.getElementById('drainStatus');
+  const btnDrainClose = document.getElementById('btnDrainClose');
+  const btnDrainOpen  = document.getElementById('btnDrainOpen');
+  if (!statusEl) return;
+  if (isClosed) {
+    statusEl.textContent = '🔒 현재 상태: 배수 마감됨 (요청수량 잠금 중)';
+    statusEl.style.color = '#e67e22';
+    btnDrainClose.disabled = true;  btnDrainClose.style.opacity = '0.5';
+    btnDrainOpen.disabled  = false; btnDrainOpen.style.opacity  = '1';
+  } else {
+    statusEl.textContent = '🔓 현재 상태: 배수 입력 허용 중';
+    statusEl.style.color = '#28a745';
+    btnDrainClose.disabled = false; btnDrainClose.style.opacity = '1';
+    btnDrainOpen.disabled  = true;  btnDrainOpen.style.opacity  = '0.5';
+  }
+}
+
+async function setDrainDeadline(isClosed) {
+  if (!supabaseClient) { alert('Supabase가 초기화되지 않았습니다.'); return; }
+  const msg = isClosed
+    ? '배수통/배수호스 요청수량을 마감하시겠습니까?'
+    : '배수통/배수호스 요청수량 마감을 해제하시겠습니까?';
+  if (!confirm(msg)) return;
+  try {
+    const { error } = await supabaseClient
+      .from('settings')
+      .upsert({ key: 'is_drain_closed', value: isClosed ? 'true' : 'false' }, { onConflict: 'key' });
+    if (error) throw error;
+    alert(isClosed ? '배수 마감되었습니다.' : '배수 마감이 해제되었습니다.');
+    updateDrainUI(isClosed);
+  } catch (error) {
+    console.error('배수 마감 오류:', error);
+    alert('오류가 발생했습니다: ' + error.message);
+  }
+}
+
+function updateDeadlineUI(isClosed) {
+  const statusEl = document.getElementById('deadlineStatus');
+  const btnClose = document.getElementById('btnClose');
+  const btnOpen = document.getElementById('btnOpen');
+  const btnOrder = document.getElementById('btnOrderSheet');
+
+  if (isClosed) {
+    statusEl.textContent = '🔒 현재 상태: 마감됨 (지점 입력 잠금 중)';
+    statusEl.style.color = '#dc3545';
+    btnClose.disabled = true; btnClose.style.opacity = '0.5';
+    btnOpen.disabled = false; btnOpen.style.opacity = '1';
+    btnOrder.disabled = false; btnOrder.style.opacity = '1'; btnOrder.style.cursor = 'pointer'; btnOrder.title = '발주서 작성';
+  } else {
+    statusEl.textContent = '🔓 현재 상태: 입력 허용 중';
+    statusEl.style.color = '#28a745';
+    btnClose.disabled = false; btnClose.style.opacity = '1';
+    btnOpen.disabled = true; btnOpen.style.opacity = '0.5';
+    btnOrder.disabled = true; btnOrder.style.opacity = '0.4'; btnOrder.style.cursor = 'not-allowed'; btnOrder.title = '마감 후 활성화됩니다';
+  }
+}
+
+async function setDeadline(isClosed) {
+  if (!supabaseClient) { alert('Supabase가 초기화되지 않았습니다.'); return; }
+  const msg = isClosed
+    ? '마감하시겠습니까?\n\n모든 지점의 신청 입력이 잠깁니다.'
+    : '마감을 해제하시겠습니까?\n\n모든 지점이 다시 입력할 수 있습니다.';
+  if (!confirm(msg)) return;
+  try {
+    const { error } = await supabaseClient
+      .from('settings')
+      .upsert({ key: 'is_closed', value: isClosed ? 'true' : 'false' }, { onConflict: 'key' });
+    if (error) throw error;
+    alert(isClosed ? '마감되었습니다. 지점 입력이 잠겼습니다.' : '마감이 해제되었습니다. 지점 입력이 허용됩니다.');
+    updateDeadlineUI(isClosed);
+  } catch (error) {
+    alert('처리 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 로그아웃
+function logout() {
+  localStorage.clear();
+  location.href = 'login.html';
+}
+
+// ══════════════════════════════════════════════
+// 지점 이메일 관리
+// ══════════════════════════════════════════════
+// loadUserEmailTable은 renderUserTable에 통합됨
+async function loadUserEmailTable() {
+  // renderUserTable()에서 이메일 셀을 포함하여 직접 렌더링합니다.
+  // 이 함수는 하위 호환용으로 유지합니다.
+}
+
+async function saveUserField(username, field, value) {
+  if (!supabaseClient) return;
+  const update = {}; update[field] = value;
+  const { error } = await supabaseClient.from('users').update(update).eq('username', username);
+  if (error) alert('저장 오류: ' + error.message);
+  else console.log('✅ 저장:', username, field, value);
+}
+
+// ══════════════════════════════════════════════
+// 배송지 관리
+// ══════════════════════════════════════════════
+async function loadDeliveryList() {
+  const tbody = document.getElementById('deliveryTableBody');
+  if (!tbody || !supabaseClient) return;
+  const { data, error } = await supabaseClient
+    .from('delivery_info')
+    .select('*')
+    .order('id', { ascending: true });
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#e74c3c;padding:12px;">불러오기 오류: ${error.message}</td></tr>`;
+    return;
+  }
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#aaa;padding:16px;">등록된 배송지가 없습니다.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = '';
+  data.forEach(function(row) {
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #ddd';
+    // 받는곳
+    const branchTd = document.createElement('td');
+    branchTd.style.cssText = 'padding:6px 10px; font-size:12px;';
+    branchTd.textContent = row.branch || '';
+    tr.appendChild(branchTd);
+    // 담당자
+    const managerTd = document.createElement('td');
+    managerTd.style.cssText = 'padding:4px 6px;';
+    const managerInput = document.createElement('input');
+    managerInput.type = 'text'; managerInput.value = row.manager || ''; managerInput.disabled = true;
+    managerInput.style.cssText = 'width:90px; padding:3px 5px; border:1px solid #ccc; border-radius:3px; font-size:12px; background:#f5f5f5;';
+    managerTd.appendChild(managerInput); tr.appendChild(managerTd);
+    // 연락처
+    const phoneTd = document.createElement('td');
+    phoneTd.style.cssText = 'padding:4px 6px;';
+    const phoneInput = document.createElement('input');
+    phoneInput.type = 'text'; phoneInput.value = row.phone || ''; phoneInput.disabled = true;
+    phoneInput.style.cssText = 'width:110px; padding:3px 5px; border:1px solid #ccc; border-radius:3px; font-size:12px; background:#f5f5f5;';
+    phoneTd.appendChild(phoneInput); tr.appendChild(phoneTd);
+    // 주소
+    const addressTd = document.createElement('td');
+    addressTd.style.cssText = 'padding:6px 10px; font-size:12px;';
+    addressTd.textContent = row.address || '';
+    tr.appendChild(addressTd);
+    // 수정/저장 버튼
+    const editTd = document.createElement('td');
+    editTd.style.cssText = 'padding:4px 6px; text-align:center;';
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '수정';
+    editBtn.style.cssText = 'padding:3px 10px; background:#1f3a5a; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:12px;';
+    editBtn.addEventListener('click', function() {
+      if (managerInput.disabled) {
+        managerInput.disabled = false; managerInput.style.background = '#fffde7';
+        phoneInput.disabled   = false; phoneInput.style.background   = '#fffde7';
+        editBtn.textContent = '저장'; editBtn.style.background = '#28a745';
+      } else {
+        editBtn.disabled = true; editBtn.textContent = '저장 중...';
+        Promise.all([
+          saveDeliveryField(row.id, 'manager', managerInput.value.trim()),
+          saveDeliveryField(row.id, 'phone',   phoneInput.value.trim()),
+        ]).then(function() {
+          managerInput.disabled = true; managerInput.style.background = '#f5f5f5';
+          phoneInput.disabled   = true; phoneInput.style.background   = '#f5f5f5';
+          editBtn.textContent = '수정'; editBtn.style.background = '#1f3a5a';
+          editBtn.disabled = false;
+        });
+      }
+    });
+    editTd.appendChild(editBtn); tr.appendChild(editTd);
+    // 삭제
+    const delTd = document.createElement('td');
+    delTd.style.cssText = 'padding:4px 6px; text-align:center;';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '삭제';
+    delBtn.style.cssText = 'padding:3px 10px; background:#e74c3c; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:12px;';
+    delBtn.addEventListener('click', function() { deleteDeliveryRow(row.id); });
+    delTd.appendChild(delBtn); tr.appendChild(delTd);
+    tbody.appendChild(tr);
+  });
+}
+
+async function addDeliveryRow() {
+  const branch  = document.getElementById('dlv_branch').value.trim();
+  const manager = document.getElementById('dlv_manager').value.trim();
+  const phone   = document.getElementById('dlv_phone').value.trim();
+  const address = document.getElementById('dlv_address').value.trim();
+  if (!branch) { alert('받는곳(설치법인명)을 입력하세요.'); return; }
+
+  const { error } = await supabaseClient
+    .from('delivery_info')
+    .insert({ branch, manager, phone, address });
+  if (error) { alert('저장 오류: ' + error.message); return; }
+
+  document.getElementById('dlv_branch').value = '';
+  document.getElementById('dlv_manager').value = '';
+  document.getElementById('dlv_phone').value = '';
+  document.getElementById('dlv_address').value = '';
+  await loadDeliveryList();
+}
+
+async function saveDeliveryField(id, field, value) {
+  const update = {}; update[field] = value;
+  const { error } = await supabaseClient.from('delivery_info').update(update).eq('id', id);
+  if (error) alert('저장 오류: ' + error.message);
+  else console.log('✅ 배송지 저장:', id, field, value);
+}
+
+async function deleteDeliveryRow(id) {
+  if (!confirm('이 배송지를 삭제하시겠습니까?')) return;
+  const { error } = await supabaseClient.from('delivery_info').delete().eq('id', id);
+  if (error) { alert('삭제 오류: ' + error.message); return; }
+  await loadDeliveryList();
+}
+
+async function uploadDeliveryExcel() {
+  const file = document.getElementById('dlvExcelFile').files[0];
+  if (!file) { alert('엑셀 파일을 선택하세요.'); return; }
+  if (!validateExcelFile(file)) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // 첫 행이 헤더인지 확인 (받는곳/담당자/연락처/주소 포함 시 헤더로 간주)
+      let startRow = 0;
+      if (rows[0] && rows[0].some(c => ['받는곳','담당자','연락처','주소'].includes(String(c).trim()))) startRow = 1;
+
+      const records = rows.slice(startRow)
+        .filter(r => r[0] && String(r[0]).trim())
+        .map(r => ({
+          branch:  String(r[0] || '').trim(),
+          manager: String(r[1] || '').trim(),
+          phone:   String(r[2] || '').trim(),
+          address: String(r[3] || '').trim(),
+        }));
+
+      if (records.length === 0) { alert('유효한 데이터가 없습니다.'); return; }
+
+      if (!confirm(`${records.length}건을 추가하시겠습니까?`)) return;
+
+      const { error } = await supabaseClient.from('delivery_info').insert(records);
+      if (error) { alert('업로드 오류: ' + error.message); return; }
+
+      document.getElementById('dlvExcelFile').value = '';
+      alert(`✅ ${records.length}건 업로드 완료`);
+      await loadDeliveryList();
+    } catch(err) {
+      alert('파일 읽기 오류: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ② 계정별 신청 다운로드
+async function downloadExcelByBranch() {
+  if (!supabaseClient) { alert('Supabase가 초기화되지 않았습니다.'); return; }
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = now.getMonth() + 1;
+  try {
+    const results = await Promise.all([
+      supabaseClient.from('applications').select('*').eq('year', year).eq('month', month),
+      supabaseClient.from('hood_applications').select('*').eq('year', year).eq('month', month),
+      supabaseClient.from('users').select('*').neq('role','admin').order('branch_name'),
+    ]);
+    results.forEach(function(r){ if(r.error) throw r.error; });
+    const applications = results[0].data || [];
+    const hoodApps     = results[1].data || [];
+    const users        = results[2].data || [];
+    if (applications.length === 0 && hoodApps.length === 0) { alert('다운로드할 당월 신청 데이터가 없습니다.'); return; }
+    const miscItems = [
+      {name:'튜빙선(1P)'},{name:'튜빙선(2P)'},{name:'튜빙선(1P, 3/8)'},
+      {name:'튜빙선_ACS (LLD T/B 1/2)'},{name:'테프론'},{name:'토끼코크'},
+      {name:'피스'},{name:'철판피스'},{name:'새들(4N)'},{name:'새들(6N)'},
+      {name:'케이블타이(대)'},{name:'케이블타이(소)'},{name:'마운팅베이스'},
+      {name:'단 니플'},{name:'연결니플'},{name:'전기테이프'},{name:'배수용큐방'},
+      {name:'천공앙카'},{name:'신형고강도(흰색) 2호'},{name:'신형고강도(흰색) 3호'},
+      {name:'건식티슈',field:'packApply'},{name:'습식티슈',field:'packApply'},{name:'위생장갑',field:'packApply'},
+    ];
+    const hoodItems = [
+      {key:'pb1',label:'PB-1 세정제'},{key:'tape',label:'은박테이프'},
+      {key:'flex',label:'알루미늄 후렉시블'},{key:'reducer',label:'환기자재 레듀샤'},
+      {key:'service_bag',label:'서비스봉투'},{key:'form_tape',label:'전기레인지 폼테이프'},
+    ];
+    const getItemVal = function(app, name, field) {
+      if (!app || !app.items) return 0;
+      const it = app.items.find(function(i){ return (i.itemName||'').trim()===name; });
+      return it ? Number(it[field||'apply']||0) : 0;
+    };
+    const branchSet = new Set();
+    applications.forEach(function(a){ branchSet.add(a.branch_id); });
+    hoodApps.forEach(function(h){ branchSet.add(h.branch_id); });
+    const branches = users.filter(function(u){ return branchSet.has(u.username); });
+    const header = ['설치법인명','예상계정수','T/O'];
+    miscItems.forEach(function(it){ header.push(it.name); });
+    hoodItems.forEach(function(it){ header.push(it.label); });
+    const aoa = [header];
+    branches.forEach(function(u) {
+      const app  = applications.find(function(a){ return a.branch_id===u.username; });
+      const hood = hoodApps.find(function(h){ return h.branch_id===u.username; });
+      const row  = [u.branch_name||u.username, u.acct||0, u.to_count||0];
+      miscItems.forEach(function(it){ row.push(getItemVal(app, it.name, it.field||'apply')); });
+      hoodItems.forEach(function(it){ row.push(hood ? Number(hood[it.key]||0) : 0); });
+      aoa.push(row);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '계정별신청현황');
+    XLSX.writeFile(wb, '계정별_신청현황_20' + year + '년' + month + '월.xlsx');
+  } catch (error) {
+    console.error('다운로드 오류:', error);
+    alert('다운로드 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// ③ 기타 부자재 다운로드
+async function downloadEtcExcel() {
+  if (!supabaseClient) { alert('Supabase가 초기화되지 않았습니다.'); return; }
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = now.getMonth() + 1;
+  try {
+    const { data: etcApps, error } = await supabaseClient
+      .from('etc_applications').select('*').eq('year', year).eq('month', month);
+    if (error) throw error;
+    if (!etcApps || etcApps.length === 0) { alert('다운로드할 기타 부자재 데이터가 없습니다.'); return; }
+    const aoa = [['설치법인명','배수통 잔여','배수통 요청','배수호스 잔여','배수호스 요청','드레인피팅 잔여','단열재 잔여','CP-AJS 배수호스(롤)']];
+    etcApps.forEach(function(row) {
+      aoa.push([
+        row.branch_name || row.branch_id,
+        row.drain_tank_remain  || 0,
+        row.drain_tank_request || 0,
+        row.drain_hose_remain  || 0,
+        row.drain_hose_request || 0,
+        row.train_remain       || 0,
+        row.insulation_remain  || 0,
+        row.cp_ajs_roll        || 0,
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '기타부자재');
+    XLSX.writeFile(wb, '기타부자재_20' + year + '년' + month + '월.xlsx');
+  } catch (error) {
+    console.error('다운로드 오류:', error);
+    alert('다운로드 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+function downloadDeliveryTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['받는곳', '담당자', '연락처', '주소'],
+    ['예) 서울법인', '홍길동', '010-0000-0000', '서울시 강남구 ...'],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '배송지');
+  XLSX.writeFile(wb, '배송지_양식.xlsx');
+}
+
+</script>
+
+</body>
+</html>
