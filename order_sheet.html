@@ -150,24 +150,24 @@ const PRICES = {
   '신형고강도(흰색) 3호': 758,
   // 대성공구 잡자재
   '테프론': 300,
-  '토끼코크': 1500,
-  '피스': 4300,
-  '철판피스': 3800,
-  '새들(4N)': 7800,
-  '새들(6N)': 11500,
+  '토끼코크': 1800,
+  '피스': 5900,
+  '철판피스': 4500,
+  '새들(4N)': 8100,
+  '새들(6N)': 12500,
   '케이블타이(대)': 15000,
   '케이블타이(소)': 3400,
-  '마운팅베이스': 19500,
-  '단 니플': 900,
-  '연결니플': 900,
-  '전기테이프': 500,
-  '배수용큐방': 40000,
-  '천공앙카': 1100,
+  '마운팅베이스': 22000,
+  '단 니플': 1100,
+  '연결니플': 1100,
+  '전기테이프': 600,
+  '배수용큐방': 45000,
+  '천공앙카': 1200,
   // 대성공구 후드
-  'PB-1 세정제 (600ml)': 1500,
-  '은박테이프': 5200,
-  '알루미늄 후렉시블(100mm×10M)': 15500,
-  '환기자재 레듀샤(125mm-100mm)': 2500,
+  'PB-1 세정제 (600ml)': 1800,
+  '은박테이프': 6000,
+  '알루미늄 후렉시블(100mm×10M)': 12000,
+  '환기자재 레듀샤(125mm-100mm)': 2700,
   // 신원튜브
   '튜빙선(1P)': 24000,
   '튜빙선(2P)': 21500,
@@ -602,19 +602,19 @@ function renderTab1_FNSys() {
 function renderTab2_DaesungMisc() {
   const items = [
     { db: '테프론',         label: '테프론',         price: 300,   perPack: null },
-    { db: '토끼코크',       label: '토끼코크',       price: 1500,  perPack: null },
-    { db: '피스',           label: '피스',           price: 4300,  perPack: 1000 },
-    { db: '철판피스',       label: '철판피스',       price: 3800,  perPack: 1000 },
-    { db: '새들(4N)',       label: '새들(4N)',       price: 7800,  perPack: 1000 },
-    { db: '새들(6N)',       label: '새들(6N)',       price: 11500, perPack: 1000 },
+    { db: '토끼코크',       label: '토끼코크',       price: 1800,  perPack: null },
+    { db: '피스',           label: '피스',           price: 5900,  perPack: 1000 },
+    { db: '철판피스',       label: '철판피스',       price: 4500,  perPack: 1000 },
+    { db: '새들(4N)',       label: '새들(4N)',       price: 8100,  perPack: 1000 },
+    { db: '새들(6N)',       label: '새들(6N)',       price: 12500, perPack: 1000 },
     { db: '케이블타이(대)', label: '케이블타이(대)', price: 15000, perPack: 1000 },
     { db: '케이블타이(소)', label: '케이블타이(중)', price: 3400,  perPack: 1000 },
-    { db: '마운팅베이스',   label: '마운팅베이스',   price: 19500, perPack: 1000 },
+    { db: '마운팅베이스',   label: '마운팅베이스',   price: 22000, perPack: 1000 },
     { db: '단 니플',        label: '단 니플',        price: 900,   perPack: null },
     { db: '연결니플',       label: '연결 니플',      price: 900,   perPack: null },
     { db: '전기테이프',     label: '전기테이프',     price: 500,   perPack: null },
-    { db: '배수용큐방',     label: '배수용큐방',     price: 40000, perPack: 1000 },
-    { db: '천공앙카',       label: '천공앙카',       price: 1100,   perPack: 10 },
+    { db: '배수용큐방',     label: '배수용큐방',     price: 45000, perPack: 1000 },
+    { db: '천공앙카',       label: '천공앙카',       price: 1200,   perPack: 10 },
   ];
 
   function calcAmt(q, item) {
@@ -815,10 +815,10 @@ function updateSimpleTotals2(tbodyId, items, qPfx, aPfx, totalId) {
 // ── 탭3: 대성공구 후드 ──
 function renderTab3_DaesungHood() {
   const items = [
-    { db: 'pb1', label: 'PB-1 세정제(600ml)', price: 1500 },
-    { db: 'tape', label: '은박테이프', price: 5200 },
-    { db: 'flex', label: '알루미늄 후렉시블(100mm×10M)', price: 15500 },
-    { db: 'reducer', label: '환기자재 레듀샤(125mm-100mm)', price: 2500 },
+    { db: 'pb1', label: 'PB-1 세정제(600ml)', price: 1800 },
+    { db: 'tape', label: '은박테이프', price: 6000 },
+    { db: 'flex', label: '알루미늄 후렉시블(100mm×10M)', price: 12000 },
+    { db: 'reducer', label: '환기자재 레듀샤(125mm-100mm)', price: 2700 },
   ];
   const { users, hoods } = allData;
   let totals = items.map(() => 0);
@@ -1147,33 +1147,33 @@ function renderTab6_Summary() {
 
   // ── 대성공구 잡자재: perPack 있는 것(PACK), 없는 것(EA) ──
   const misc2Pack = [
-    { label:'피스',           price:4300,  perPack:1000, getQty:()=>getAppQty('피스') },
-    { label:'철판피스',       price:3800,  perPack:1000, getQty:()=>getAppQty('철판피스') },
-    { label:'새들(4N)',       price:7800,  perPack:1000, getQty:()=>getAppQty('새들(4N)') },
-    { label:'새들(6N)',       price:11500, perPack:1000, getQty:()=>getAppQty('새들(6N)') },
+    { label:'피스',           price:5900,  perPack:1000, getQty:()=>getAppQty('피스') },
+    { label:'철판피스',       price:4500,  perPack:1000, getQty:()=>getAppQty('철판피스') },
+    { label:'새들(4N)',       price:8100,  perPack:1000, getQty:()=>getAppQty('새들(4N)') },
+    { label:'새들(6N)',       price:12500, perPack:1000, getQty:()=>getAppQty('새들(6N)') },
     { label:'케이블타이(대)', price:15000, perPack:1000, getQty:()=>getAppQty('케이블타이(대)') },
     { label:'케이블타이(중)', price:3400,  perPack:1000, getQty:()=>getAppQty('케이블타이(소)') },
-    { label:'마운팅베이스',   price:19500, perPack:1000, getQty:()=>getAppQty('마운팅베이스') },
-    { label:'배수용큐방',     price:40000, perPack:1000, getQty:()=>getAppQty('배수용큐방') },
-    { label:'천공앙카',       price:1100,  perPack:10,   getQty:()=>getAppQty('천공앙카') },
+    { label:'마운팅베이스',   price:22000, perPack:1000, getQty:()=>getAppQty('마운팅베이스') },
+    { label:'배수용큐방',     price:45000, perPack:1000, getQty:()=>getAppQty('배수용큐방') },
+    { label:'천공앙카',       price:1200,  perPack:10,   getQty:()=>getAppQty('천공앙카') },
   ];
   misc2Pack.forEach(it => { it._ea=it.getQty(); it._pack=Math.round(it._ea/it.perPack); it._amt=Math.round(it._pack*it.price); });
 
   const misc2EA = [
     { label:'테프론',     price:300,  getQty:()=>getAppQty('테프론') },
-    { label:'토끼코크',   price:1500, getQty:()=>getAppQty('토끼코크') },
-    { label:'단 니플',    price:900,  getQty:()=>getAppQty('단 니플') },
-    { label:'연결 니플',  price:900,  getQty:()=>getAppQty('연결니플') },
-    { label:'전기테이프', price:500,  getQty:()=>getAppQty('전기테이프') },
+    { label:'토끼코크',   price:1800, getQty:()=>getAppQty('토끼코크') },
+    { label:'단 니플',    price:1100,  getQty:()=>getAppQty('단 니플') },
+    { label:'연결 니플',  price:1100,  getQty:()=>getAppQty('연결니플') },
+    { label:'전기테이프', price:600,  getQty:()=>getAppQty('전기테이프') },
   ];
   misc2EA.forEach(it => { it._qty=it.getQty(); it._amt=it._qty*it.price; });
 
   // ── 대성공구 후드 ──
   const hoodItems = [
-    { label:'PB-1 세정제',    price:1500,  getQty:()=>getHoodQty('pb1') },
-    { label:'은박테이프',     price:5200,  getQty:()=>getHoodQty('tape') },
-    { label:'알루미늄 후렉시블', price:15500, getQty:()=>getHoodQty('flex') },
-    { label:'환기자재 레듀샤', price:2500,  getQty:()=>getHoodQty('reducer') },
+    { label:'PB-1 세정제',    price:1800,  getQty:()=>getHoodQty('pb1') },
+    { label:'은박테이프',     price:6000,  getQty:()=>getHoodQty('tape') },
+    { label:'알루미늄 후렉시블', price:12000, getQty:()=>getHoodQty('flex') },
+    { label:'환기자재 레듀샤', price:2700,  getQty:()=>getHoodQty('reducer') },
   ];
   hoodItems.forEach(it => { it._qty=it.getQty(); it._amt=it._qty*it.price; });
 
@@ -1566,22 +1566,22 @@ async function addDeliverySheet(wb) {
 // 대성공구(잡자재) 전용 엑셀 시트 (EA/금액 제외, PACK만, 합계수량+합계금액 세로 2행)
 function buildDaesungMiscSheet(wb) {
   const packItems = [
-    { db:'피스',           label:'피스',           price:4300,  perPack:1000 },
-    { db:'철판피스',       label:'철판피스',       price:3800,  perPack:1000 },
-    { db:'새들(4N)',       label:'새들(4N)',       price:7800,  perPack:1000 },
-    { db:'새들(6N)',       label:'새들(6N)',       price:11500, perPack:1000 },
+    { db:'피스',           label:'피스',           price:5900,  perPack:1000 },
+    { db:'철판피스',       label:'철판피스',       price:4500,  perPack:1000 },
+    { db:'새들(4N)',       label:'새들(4N)',       price:8100,  perPack:1000 },
+    { db:'새들(6N)',       label:'새들(6N)',       price:12500, perPack:1000 },
     { db:'케이블타이(대)', label:'케이블타이(대)', price:15000, perPack:1000 },
     { db:'케이블타이(소)', label:'케이블타이(중)', price:3400,  perPack:1000 },
-    { db:'마운팅베이스',   label:'마운팅베이스',   price:19500, perPack:1000 },
-    { db:'배수용큐방',     label:'배수용큐방',     price:40000, perPack:1000 },
-    { db:'천공앙카',       label:'천공앙카',       price:1100,  perPack:10   },
+    { db:'마운팅베이스',   label:'마운팅베이스',   price:22000, perPack:1000 },
+    { db:'배수용큐방',     label:'배수용큐방',     price:45000, perPack:1000 },
+    { db:'천공앙카',       label:'천공앙카',       price:1200,  perPack:10   },
   ];
   const unitItems = [
     { db:'테프론',     label:'테프론',     price:300  },
-    { db:'토끼코크',   label:'토끼코크',   price:1500 },
-    { db:'단 니플',    label:'단 니플',    price:900  },
-    { db:'연결니플',   label:'연결 니플',  price:900  },
-    { db:'전기테이프', label:'전기테이프', price:500  },
+    { db:'토끼코크',   label:'토끼코크',   price:1800 },
+    { db:'단 니플',    label:'단 니플',    price:1100 },
+    { db:'연결니플',   label:'연결 니플',  price:1100 },
+    { db:'전기테이프', label:'전기테이프', price:600  },
   ];
   const { users, apps } = allData;
 
@@ -1686,10 +1686,10 @@ function buildDaesungMiscSheet(wb) {
 // 대성공구(후드) 전용 엑셀 시트 - 첨부파일 형식 그대로
 function buildDaesungHoodSheet(wb) {
   const items = [
-    { db:'pb1',     label:'PB-1 세정제\n(600ml)\n(1,500원)✎',                      price:1500  },
-    { db:'tape',    label:'은박테이프\n(5,200원)✎',                                  price:5200  },
-    { db:'flex',    label:'알루미늄 후렉시블\n(100mm×10M)\n(15,500원)✎',             price:15500 },
-    { db:'reducer', label:'환기자재 레듀샤\n(125mm-100mm)\n(2,500원)✎',              price:2500  },
+    { db:'pb1',     label:'PB-1 세정제\n(600ml)\n(1,800원)✎',                      price:1800  },
+    { db:'tape',    label:'은박테이프\n(6,000원)✎',                                  price:6000  },
+    { db:'flex',    label:'알루미늄 후렉시블\n(100mm×10M)\n(12,000원)✎',             price:12000 },
+    { db:'reducer', label:'환기자재 레듀샤\n(125mm-100mm)\n(2,700원)✎',              price:2700  },
   ];
   const { users, hoods } = allData;
 
@@ -2225,22 +2225,22 @@ async function downloadSummaryExcel() {
   ].map(it=>({...it, qty:getQ(it.db), amt:getQ(it.db)*it.price}));
 
   const misc2Pack = [
-    {label:'피스',price:4300,pp:1000,db:'피스'},{label:'철판피스',price:3800,pp:1000,db:'철판피스'},
-    {label:'새들(4N)',price:7800,pp:1000,db:'새들(4N)'},{label:'새들(6N)',price:11500,pp:1000,db:'새들(6N)'},
+    {label:'피스',price:5900,pp:1000,db:'피스'},{label:'철판피스',price:4500,pp:1000,db:'철판피스'},
+    {label:'새들(4N)',price:8100,pp:1000,db:'새들(4N)'},{label:'새들(6N)',price:12500,pp:1000,db:'새들(6N)'},
     {label:'케이블타이(대)',price:15000,pp:1000,db:'케이블타이(대)'},{label:'케이블타이(중)',price:3400,pp:1000,db:'케이블타이(소)'},
-    {label:'마운팅베이스',price:19500,pp:1000,db:'마운팅베이스'},{label:'배수용큐방',price:40000,pp:1000,db:'배수용큐방'},
-    {label:'천공앙카',price:1100,pp:10,db:'천공앙카'}
+    {label:'마운팅베이스',price:22000,pp:1000,db:'마운팅베이스'},{label:'배수용큐방',price:45000,pp:1000,db:'배수용큐방'},
+    {label:'천공앙카',price:1200,pp:10,db:'천공앙카'}
   ].map(it=>{ const ea=getQ(it.db); const pk=Math.round(ea/it.pp); return {...it,ea,pack:pk,amt:Math.round(pk*it.price)}; });
 
   const misc2EA = [
-    {label:'테프론',price:300,db:'테프론'},{label:'토끼코크',price:1500,db:'토끼코크'},
-    {label:'단 니플',price:900,db:'단 니플'},{label:'연결 니플',price:900,db:'연결니플'},
-    {label:'전기테이프',price:500,db:'전기테이프'}
+    {label:'테프론',price:300,db:'테프론'},{label:'토끼코크',price:1800,db:'토끼코크'},
+    {label:'단 니플',price:1100,db:'단 니플'},{label:'연결 니플',price:1100,db:'연결니플'},
+    {label:'전기테이프',price:600,db:'전기테이프'}
   ].map(it=>({...it, qty:getQ(it.db), amt:getQ(it.db)*it.price}));
 
   const hoodItems = [
-    {label:'PB-1 세정제',price:1500,db:'pb1'},{label:'은박테이프',price:5200,db:'tape'},
-    {label:'알루미늄 후렉시블',price:15500,db:'flex'},{label:'환기자재 레듀샤',price:2500,db:'reducer'}
+    {label:'PB-1 세정제',price:1800,db:'pb1'},{label:'은박테이프',price:6000,db:'tape'},
+    {label:'알루미늄 후렉시블',price:12000,db:'flex'},{label:'환기자재 레듀샤',price:2700,db:'reducer'}
   ].map(it=>({...it, qty:getH(it.db), amt:getH(it.db)*it.price}));
 
   const shinwonItems = [
