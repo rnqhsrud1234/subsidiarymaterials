@@ -135,8 +135,8 @@
 </div>
 
 <script>
-const SUPABASE_URL = 'https://yhuvkxuzolhpnzzbpigr.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_Ka0LELW2NrPf3q3dyO1Usg_EHYTS31K';
+const SUPABASE_URL = 'https://xkveqzawikqkkojbbtri.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_CFWOQHJirhT9XvHoevd3Mg_2Ik5eNRB';
 var supabaseClient = null;
 
 // 단가 정보
@@ -1317,94 +1317,40 @@ function renderTab6_Summary() {
 async function renderTab7_Etc() {
   const el = document.getElementById('tab7');
   if (!el) return;
-
-  const now = new Date();
-  const year  = now.getFullYear().toString().slice(-2);
-  const month = now.getMonth() + 1;
-
   try {
-    const results = await Promise.all([
-      supabaseClient.from('etc_applications').select('*').eq('year', year).eq('month', month).order('branch_name'),
-      supabaseClient.from('users').select('username, branch_name').neq('role','admin').order('branch_name'),
-    ]);
-    results.forEach(function(r){ if(r.error) throw r.error; });
-
-    const etcApps = results[0].data || [];
-    const users   = results[1].data || [];
-
-    if (etcApps.length === 0) {
+    const { data: etcApps, error } = await supabaseClient
+      .from('etc_applications').select('*').eq('year', YEAR).eq('month', MONTH).order('branch_name');
+    if (error) throw error;
+    if (!etcApps || etcApps.length === 0) {
       el.innerHTML = '<p style="padding:20px; color:#888;">기타 부자재 신청 데이터가 없습니다.</p>';
       return;
     }
-
-    const thStyle = 'border:1px solid #000; padding:6px 8px; background:#cfdcf5; text-align:center; font-weight:normal;';
-    const tdStyle = 'border:1px solid #000; padding:6px 8px; text-align:center;';
-    const tdLeft  = 'border:1px solid #000; padding:6px 8px; text-align:left;';
-
-    let html = `
-      <table style="width:100%; border-collapse:collapse; font-size:13px; margin-top:10px;">
-        <thead>
-          <tr>
-            <th style="${thStyle}">설치법인명</th>
-            <th style="${thStyle}">배수통 잔여</th>
-            <th style="${thStyle}">배수통 요청</th>
-            <th style="${thStyle}">배수호스 잔여</th>
-            <th style="${thStyle}">배수호스 요청</th>
-            <th style="${thStyle}">드레인피팅 잔여</th>
-            <th style="${thStyle}">단열재 잔여</th>
-            <th style="${thStyle}">CP-AJS 배수호스(롤)</th>
-          </tr>
-        </thead>
-        <tbody>`;
-
-    let sumTankRemain=0, sumTankRequest=0, sumHoseRemain=0, sumHoseRequest=0;
-    let sumTrain=0, sumInsulation=0, sumCpAjs=0;
-
-    etcApps.forEach(function(row) {
-      const tankRemain  = row.drain_tank_remain  || 0;
-      const tankRequest = row.drain_tank_request || 0;
-      const hoseRemain  = row.drain_hose_remain  || 0;
-      const hoseRequest = row.drain_hose_request || 0;
-      const train       = row.train_remain       || 0;
-      const insulation  = row.insulation_remain  || 0;
-      const cpAjs       = row.cp_ajs_roll        || 0;
-
-      sumTankRemain  += tankRemain;
-      sumTankRequest += tankRequest;
-      sumHoseRemain  += hoseRemain;
-      sumHoseRequest += hoseRequest;
-      sumTrain       += train;
-      sumInsulation  += insulation;
-      sumCpAjs       += cpAjs;
-
-      html += `<tr>
-        <td style="${tdLeft}">${row.branch_name || row.branch_id}</td>
-        <td style="${tdStyle}">${tankRemain}</td>
-        <td style="${tdStyle}">${tankRequest}</td>
-        <td style="${tdStyle}">${hoseRemain}</td>
-        <td style="${tdStyle}">${hoseRequest}</td>
-        <td style="${tdStyle}">${train}</td>
-        <td style="${tdStyle}">${insulation}</td>
-        <td style="${tdStyle}">${cpAjs}</td>
-      </tr>`;
+    const thS = 'border:1px solid #000; padding:6px 8px; background:#cfdcf5; text-align:center; font-weight:normal;';
+    const tdS = 'border:1px solid #000; padding:6px 8px; text-align:center;';
+    const tdL = 'border:1px solid #000; padding:6px 8px; text-align:left;';
+    let s1=0,s2=0,s3=0,s4=0,s5=0,s6=0,s7=0;
+    let html = `<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;">
+      <thead><tr>
+        <th style="${thS}">설치법인명</th><th style="${thS}">배수통 잔여</th><th style="${thS}">배수통 요청</th>
+        <th style="${thS}">배수호스 잔여</th><th style="${thS}">배수호스 요청</th>
+        <th style="${thS}">드레인피팅 잔여</th><th style="${thS}">단열재 잔여</th><th style="${thS}">CP-AJS 배수호스(롤)</th>
+      </tr></thead><tbody>`;
+    etcApps.forEach(function(r) {
+      const v1=r.drain_tank_remain||0, v2=r.drain_tank_request||0, v3=r.drain_hose_remain||0,
+            v4=r.drain_hose_request||0, v5=r.train_remain||0, v6=r.insulation_remain||0, v7=r.cp_ajs_roll||0;
+      s1+=v1; s2+=v2; s3+=v3; s4+=v4; s5+=v5; s6+=v6; s7+=v7;
+      html+=`<tr><td style="${tdL}">${r.branch_name||r.branch_id}</td>
+        <td style="${tdS}">${v1}</td><td style="${tdS}">${v2}</td><td style="${tdS}">${v3}</td>
+        <td style="${tdS}">${v4}</td><td style="${tdS}">${v5}</td><td style="${tdS}">${v6}</td><td style="${tdS}">${v7}</td></tr>`;
     });
-
-    html += `<tr style="background:#e6e6e6; font-weight:bold;">
-        <td style="${tdLeft}">합계</td>
-        <td style="${tdStyle}">${sumTankRemain}</td>
-        <td style="${tdStyle}">${sumTankRequest}</td>
-        <td style="${tdStyle}">${sumHoseRemain}</td>
-        <td style="${tdStyle}">${sumHoseRequest}</td>
-        <td style="${tdStyle}">${sumTrain}</td>
-        <td style="${tdStyle}">${sumInsulation}</td>
-        <td style="${tdStyle}">${sumCpAjs}</td>
-      </tr>
-        </tbody>
-      </table>`;
-
+    html+=`<tr style="background:#e6e6e6;font-weight:bold;">
+      <td style="${tdL}">합계</td>
+      <td style="${tdS}">${s1}</td><td style="${tdS}">${s2}</td><td style="${tdS}">${s3}</td>
+      <td style="${tdS}">${s4}</td><td style="${tdS}">${s5}</td><td style="${tdS}">${s6}</td><td style="${tdS}">${s7}</td>
+    </tr></tbody></table>`;
     el.innerHTML = html;
   } catch(e) {
-    el.innerHTML = '<p style="padding:20px; color:red;">불러오기 오류: ' + e.message + '</p>';
+    el.innerHTML = '<p style="padding:20px;color:red;">불러오기 오류: '+e.message+'</p>';
   }
 }
 
